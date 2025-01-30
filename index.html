@@ -227,7 +227,7 @@
           </div>
           <div class="custom-control custom-switch">
             <input type="checkbox" class="custom-control-input" id="ck_hideHline" checked />
-            <label class="custom-control-label" for="ck_hideHline">Hide almoust flat edges</label>
+            <label class="custom-control-label" for="ck_hideHline">Hide almost flat edges</label>
           </div>
           <div id="div_hide_angle">
             <label for="hideAngleRange">&nbsp;&nbsp;&nbsp;Hide Angle (deg.)</label>
@@ -288,7 +288,7 @@
             <div class="modal-content">
               <div class="modal-header">
                 <h1>About ORI-REVO</h1>
-                <span class="modalClose">&times</span>
+                <span class="modalClose">&times;</span>
               </div>
               <div class="modal-body">
                 <img src="img/balls.jpg" align="right" width="300">
@@ -1143,7 +1143,9 @@ function modelScreen_init() {
    	side: THREE.DoubleSide,                                 
    	color: 0xffffff, 
    	specular:0xffffff,
- 		shininess:0//,
+ 		shininess:0,
+		opacity:0.8,
+		transparent:true
  	});
 
 	material.polygonOffset = true;		
