@@ -219,10 +219,10 @@
             <input id="flapSizeRange" type="range" min="1" max="400" step="1" value="20"/>
             <span id="FlapSize">20</span><br><br>
           </div>
-          <div id="div_grueArea">
+          <div id="div_glueArea">
             <div class="custom-control custom-switch">
               <input type="checkbox" class="custom-control-input" id="ck_glueArea">
-              <label class="custom-control-label" for="ck_glueArea">Draw Glueing Area</label>
+              <label class="custom-control-label" for="ck_glueArea">Draw glueing area</label>
             </div>
           </div>
           <div class="custom-control custom-switch">
@@ -277,6 +277,12 @@
           </div>
           <br>
 
+          <div id="div_face_opacity">
+            <label for="faceOpacityRange">Face opacity (%)</label>
+            <input id="faceOpacityRange" type="range" min="0" max="100" step="1" value="100"/>
+            <span id="FaceOpacity">100</span><br><br>
+          </div>
+					
           <div>
             <input class="btn btn-danger btn-sm" type="button" value="Clear" id="clear_btn"/><br><br>
           </div>             
@@ -406,6 +412,7 @@ let pLineChanged = false;
 let modelDivNum = 6;
 let undoHistory = [];
 let hideAngleDeg = 25;
+let faceOpacity = 1;
 
 document.body.onresize = function() { windowResized(); }
 document.getElementById("divNum").onchange = function() { divNumChange(document.getElementById("divNum").value);}
@@ -413,6 +420,8 @@ document.getElementById("flapSizeRange").onchange = function() { flapSizeChange(
 document.getElementById("flapSizeRange").oninput = function() { flapSizeChange(document.getElementById("flapSizeRange").value);}
 document.getElementById("hideAngleRange").onchange = function() { hideAngleChange(document.getElementById("hideAngleRange").value);}
 document.getElementById("hideAngleRange").oninput = function() { hideAngleChange(document.getElementById("hideAngleRange").value);}
+document.getElementById("faceOpacityRange").onchange = function() { faceOpacityChange(document.getElementById("faceOpacityRange").value);}
+document.getElementById("faceOpacityRange").oninput = function() { faceOpacityChange(document.getElementById("faceOpacityRange").value);}
 document.getElementById("export_data_type").onchange = function() { export_data();}
 document.getElementById("load_example").onchange = function() { loadExampleData(document.getElementById("load_example").value);}
 document.getElementById("orirevo_file").onchange = function() { file_load(document.getElementById("orirevo_file"));}
@@ -756,10 +765,10 @@ function modelTypeChange(type) {
   mainCanvas_draw();
   if(type == MODEL_TYPE_PRISM_DISK || type == MODEL_TYPE_FLAP_DISK) {
     document.getElementById('div_flapsize').style.visibility ="hidden";
-    document.getElementById('div_grueArea').style.visibility ="hidden";
+    document.getElementById('div_glueArea').style.visibility ="hidden";
   } else {
     document.getElementById('div_flapsize').style.visibility ="visible";
-    document.getElementById('div_grueArea').style.visibility ="visible";
+    document.getElementById('div_glueArea').style.visibility ="visible";
   }
 }
 
@@ -1121,6 +1130,15 @@ let geometry;
 // start
 modelScreen_init();
 
+
+function faceOpacityChange(i) {
+  faceOpacity = Number(i)/100;
+  document.getElementById("FaceOpacity").innerText = i;
+	material.setValues({opacity:faceOpacity});
+  render();
+  cpCanvas_draw();
+}
+
 function modelScreen_init() {
 	// scene
   scene = new THREE.Scene();
@@ -1144,7 +1162,7 @@ function modelScreen_init() {
    	color: 0xffffff, 
    	specular:0xffffff,
  		shininess:0,
-		opacity:0.8,
+		opacity:1.0,
 		transparent:true
  	});
 
