@@ -1,0 +1,2365 @@
+
+import * as THREE from './three/three.module.js';
+
+document.getElementById('last_update').innerHTML = "Last update Jun. 7 2023<br>First release Jun. 8 2022";
+
+const COLOR_GRID = 'rgb(200, 200, 200)';
+const COLOR_AXIS = 'rgb(0, 0, 0)';
+const COLOR_POINT = 'rgb(0, 0, 0)';
+const COLOR_SELECTED_POINT = 'rgb(0, 255, 0)';
+const COLOR_PLINE = 'rgb(255, 0, 0)';
+const COLOR_GLUE_AREA = 'rgb(240, 240, 240)';
+const POINT_SIZE = 3;
+const GRID_AREA_W = 500;
+const BACK_COLOR_3D_SCREEN = 0xf0f0f0;
+
+const MODEL_TYPE_FLAP_CYLINDER = 0;
+const MODEL_TYPE_PRISM_CYLINDER = 1;
+const MODEL_TYPE_FLAP_DISK = 2;
+const MODEL_TYPE_PRISM_DISK = 3;
+let modelType = MODEL_TYPE_FLAP_CYLINDER;
+
+let flapSize = 20;
+let bHideHline = true;
+let bDrawGlueArea = false;
+let GlueArea = {};
+GlueArea.x = GlueArea.y = GlueArea.w = GlueArea.h = 0;
+let bShowGrid = true;
+let gridDivNum = 16;
+let pLineChanged = false;
+let modelDivNum = 6;
+let undoHistory = [];
+let hideAngleDeg = 25;
+let faceOpacity = 1;
+
+document.body.onresize = function() { windowResized(); }
+document.getElementById("divNum").onchange = function() { divNumChange(document.getElementById("divNum").value);}
+document.getElementById("flapSizeRange").onchange = function() { flapSizeChange(document.getElementById("flapSizeRange").value);}
+document.getElementById("flapSizeRange").oninput = function() { flapSizeChange(document.getElementById("flapSizeRange").value);}
+document.getElementById("hideAngleRange").onchange = function() { hideAngleChange(document.getElementById("hideAngleRange").value);}
+document.getElementById("hideAngleRange").oninput = function() { hideAngleChange(document.getElementById("hideAngleRange").value);}
+document.getElementById("faceOpacityRange").onchange = function() { faceOpacityChange(document.getElementById("faceOpacityRange").value);}
+document.getElementById("faceOpacityRange").oninput = function() { faceOpacityChange(document.getElementById("faceOpacityRange").value);}
+document.getElementById("export_data_type").onchange = function() { export_data();}
+document.getElementById("load_example").onchange = function() { loadExampleData(document.getElementById("load_example").value);}
+document.getElementById("orirevo_file").onchange = function() { file_load(document.getElementById("orirevo_file"));}
+document.getElementById("ck_Animation").onclick = function() { buttonPressed("animation");}
+document.getElementById("smooth_btn").onclick = function() { buttonPressed("smooth");}
+document.getElementById("ck_grid").onclick = function() { buttonPressed("grid");}
+document.getElementById("grid_inc").onclick = function() { buttonPressed("grid_inc");}
+document.getElementById("grid_dec").onclick = function() { buttonPressed("grid_dec");}
+document.getElementById("type_flap_cylinder").onclick = function() { modelTypeChange(MODEL_TYPE_FLAP_CYLINDER);}
+document.getElementById("type_prism_cylinder").onclick = function() { modelTypeChange(MODEL_TYPE_PRISM_CYLINDER);}
+document.getElementById("type_flap_disk").onclick = function() { modelTypeChange(MODEL_TYPE_FLAP_DISK);}
+document.getElementById("type_prism_disk").onclick = function() { modelTypeChange(MODEL_TYPE_PRISM_DISK);}
+document.getElementById("ck_glueArea").onclick = function() { buttonPressed('draw_glue_area');}
+document.getElementById("ck_hideHline").onclick = function() { buttonPressed('hide_hline');}
+document.getElementById("undo_smooth").onclick = function() { buttonPressed('undo');}
+document.getElementById("clear_btn").onclick = function() { buttonPressed('clear');}
+
+
+
+function file_loaded(txt) {
+  let data = JSON.parse(txt);
+
+  if (data.application != 'orirevo') {
+    console.log("not orirevo data");
+    return;
+  }
+
+  if (Number(data.version) > '1') {
+    console.log("cannot read this version:" + data.version);
+    return;
+  }
+
+  pLine = [];
+
+  flapSize = Number(data.flapSize);
+  modelDivNum = Number(data.modelDivNum);
+
+  document.getElementById("divNum").value = modelDivNum;
+  document.getElementById("flapSizeRange").value = flapSize;
+  document.getElementById("FlapSize").innerText = flapSize;
+
+  modelType = Number(data.modelType);
+  let elements = document.getElementsByName('modelType');
+  elements[modelType].checked = true;
+
+  modelTypeChange(modelType);
+
+  let vnum = data.vnum; 
+  let xy = data.xy.split(',');
+  for (let i = 0; i < vnum; i++) {
+    pLine.push(new Vec2d(Number(xy[i*2]), Number(xy[i*2+1])));
+  }
+
+  undoHistory = [];
+  document.getElementById('undo_smooth').disabled = true;
+  mainCanvas_draw();
+  buildModel();
+  render();
+  cpCanvas_draw();
+}
+
+function file_load(input) {
+  let f = input.files[0];
+  let reader = new FileReader();
+
+  reader.onload = () =>{ file_loaded(reader.result); }
+  reader.readAsText(f, 'UTF-8');
+}
+
+function loadExampleData(type) {
+  switch(type) {
+    case 'sphere8':
+      pLine = [];
+      setData_Sphere(pLine, GRID_AREA_W);
+      modelType = MODEL_TYPE_FLAP_CYLINDER;
+      modelDivNum = 8;      
+      document.getElementById("divNum").value = modelDivNum;
+      
+      flapSize = 40;
+      document.getElementById("flapSizeRange").value = flapSize;
+      document.getElementById("FlapSize").innerText = flapSize;
+      document.getElementById("type_flap_cylinder").checked = true;
+      modelTypeChange(modelType);
+      break;
+
+    case 'sphere16':
+      pLine = [];
+      setData_Sphere(pLine, GRID_AREA_W);
+      modelType = MODEL_TYPE_FLAP_CYLINDER;
+      modelDivNum = 16;      
+      document.getElementById("divNum").value = modelDivNum;
+      
+      flapSize = 200;
+      document.getElementById("flapSizeRange").value = flapSize;
+      document.getElementById("FlapSize").innerText = flapSize;
+      document.getElementById("type_flap_cylinder").checked = true;
+      modelTypeChange(modelType);
+      break;
+
+    case 'egg':
+      pLine = [];
+      setData_Egg(pLine, GRID_AREA_W);
+      modelType = MODEL_TYPE_FLAP_DISK;
+      modelDivNum = 8;      
+      document.getElementById("divNum").value = modelDivNum;
+      document.getElementById("type_flap_disk").checked = true;
+      modelTypeChange(modelType);
+      break;
+    
+    case 'wrapped_sphere':
+      pLine = [];
+      setData_WrappedSphere(pLine, GRID_AREA_W);
+      modelType = MODEL_TYPE_FLAP_DISK;
+      modelDivNum = 8;      
+      document.getElementById("divNum").value = modelDivNum;
+      document.getElementById("type_flap_disk").checked = true;
+      modelTypeChange(modelType);
+      break;
+
+    case 'twisted_tower':
+      file_loaded('{"application":"orirevo","version":1,"vnum":14,"modelDivNum":8,"flapSize":28,"modelType":0,"xy":"125,-156.25,125,-93.75,62.5,-93.75,62.5,-31.25,0,-31.25,0,31.25,-62.5,31.25,-62.5,93.75,-125,93.75,-125,156.25,-187.5,156.25,-187.5,218.75,-250,218.75,-250,281.25,"}');
+      break;
+    case 'bell':
+      file_loaded('{"application":"orirevo","version":1,"vnum":4,"modelDivNum":8,"flapSize":20,"modelType":0,"xy":"-31.25,-156.25,93.75,-93.75,125,93.75,187.5,125,"}');
+      break;
+    case 'stacked_3_boxes':
+      file_loaded('{"application":"orirevo","version":1,"vnum":8,"modelDivNum":8,"flapSize":29,"modelType":0,"xy":"-54.921875,-352.5,125,-343.75,125,-218.75,-187.5,-187.5,-187.5,-62.5,250,-31.25,250,93.75,-62.921875,102.5,"}');
+      break;
+    case 'whipped_cream':
+      file_loaded('{"application":"orirevo","version":1,"vnum":16,"modelDivNum":6,"flapSize":29,"modelType":3,"xy":"0,-204.5,11.5390625,-198.5,24.943359375,-187.5,42.078125,-166.5,63.078125,-141.5,88.078125,-118.5,113.578125,-95.75,136.078125,-71.5,153.677734375,-46.9375,164.4765625,-23.25,167.095703125,0.53515625,160.15625,25.390625,143.447265625,48.3984375,116.7578125,66.640625,78.078125,81.5,210.078125,82.5,"}');
+      break;
+    case 'gift_box':
+      file_loaded('{"application":"orirevo","version":1,"vnum":4,"modelDivNum":10,"flapSize":200,"modelType":2,"xy":"0,93.75,156.25,93.75,218.75,-31.25,-72.140625,-102.5,"}');
+      break;
+  }
+
+  undoHistory = [];
+  document.getElementById('undo_smooth').disabled = true;
+
+  buildModel();
+  render();
+  cpCanvas_draw();
+  mainCanvas_draw();
+}
+
+function divNumChange(i) {
+  modelDivNum = Number(i);
+  buildModel();
+  render();
+  cpCanvas_draw();
+}
+
+function flapSizeChange(i) {
+  flapSize = Number(i);
+  document.getElementById("FlapSize").innerText = i;
+  buildModel();
+  render();
+  cpCanvas_draw();
+}
+
+function hideAngleChange(i) {
+  hideAngleDeg = Number(i);
+  document.getElementById("HideAngle").innerText = i;
+  buildModel();
+  render();
+  cpCanvas_draw();
+}
+
+// prevent pop-up menu
+let contextmenu_function = () => {	event.preventDefault(); }
+document.addEventListener('contextmenu', contextmenu_function);
+
+// event
+let wrapper1 = document.getElementById("wrapper1");
+const mainCanvas = document.getElementById("canvas1");
+mainCanvas.width = wrapper1.getBoundingClientRect().width;
+mainCanvas.height = wrapper1.getBoundingClientRect().height;
+mainCanvas.addEventListener('mousedown',  mainCanvas_onMouseDown, false);
+mainCanvas.addEventListener('mouseup',	mainCanvas_onMouseUp,	false);
+mainCanvas.addEventListener('mousemove',  mainCanvas_onMouseMove,  false);
+mainCanvas.addEventListener('wheel', mainCanvas_onMouseWheel, false);
+
+let mainCanvas_preMouseX;
+let mainCanvas_preMouseY;
+let mainCanvas_pressedMouseX;
+let mainCanvas_pressedMouseY;
+let mainCanvas_pressedMouseButton;
+
+let mainCanvas_scale = 1;
+let mainCanvas_transVec = new Vec2d(0, 0);
+
+let pLine = [];
+let pickCandidatePointIndex = -1;
+let draggingPointIndex = -1;
+
+// start
+mainCanvas_draw();
+
+function push_undoHistory() {
+  let pLineCopy = new Array();
+  for (let p of pLine) {
+    pLineCopy.push(new Vec2d(p));
+  }
+  undoHistory.push(pLineCopy);
+}
+
+let morphParams = {
+  ratioInt : 0,
+  ratioDiff : 5,
+  timer : null,
+  pLineBkup : null,
+  intervalMS : 100,
+}
+
+export function buttonPressed(s) {
+  if ( s == 'clear') {
+    if (document.getElementById("ck_Animation").checked) {
+      document.getElementById("ck_Animation").checked = false;
+      stopAnimation();
+    }
+    undoHistory = [];
+    pLine = [];
+    pLineChanged = true;
+    mainCanvas_draw();
+
+    cpEdges = [];
+    cpCanvas_draw();
+    document.getElementById('undo_smooth').disabled = true;
+
+  } else if (s == 'grid') {
+    bShowGrid = document.getElementById("ck_grid").checked;      
+    mainCanvas_draw();
+
+  } else if (s == 'grid_dec' && bShowGrid) {
+    if (gridDivNum > 2) {
+      gridDivNum /= 2;
+      mainCanvas_draw();
+    }
+
+  } else if (s == 'grid_inc' && bShowGrid) {
+    if (gridDivNum < 256) {
+      gridDivNum *= 2;
+      mainCanvas_draw();
+    }
+
+  } else if (s == 'smooth') {
+    if (document.getElementById("ck_Animation").checked) {
+      document.getElementById("ck_Animation").checked = false;
+      stopAnimation();
+    }
+
+    push_undoHistory();
+    document.getElementById('undo_smooth').disabled = false;
+
+    const startTime = performance.now();     
+    smooth();
+    pLineChanged = true;
+    mainCanvas_draw();
+
+    const endTime = performance.now(); 
+    console.log("time ", endTime - startTime);
+
+  } else if (s == 'hide_hline') {
+    bHideHline = document.getElementById("ck_hideHline").checked;    
+    document.getElementById("hideAngleRange").disabled = !bHideHline;
+    // モデルの生成と展開図の生成を同時に行うので、このようになっている
+    pLineChanged = true;
+    mainCanvas_draw();
+
+  } else if (s == 'draw_glue_area') {
+    bDrawGlueArea = document.getElementById("ck_glueArea").checked;    
+    // モデルの生成と展開図の生成を同時に行うので、このようになっている
+    pLineChanged = true;
+    mainCanvas_draw();
+
+  } else if (s == 'undo') {
+    if (undoHistory.length != 0) {
+      pLine = undoHistory.pop();
+      pLineChanged = true;
+      mainCanvas_draw();
+
+      if(undoHistory.length == 0) {
+        document.getElementById('undo_smooth').disabled = true;
+      }
+    }
+
+  } else if(s == 'animation') {
+    if (document.getElementById("ck_Animation").checked) {   
+      morphParams.pLineBkup = new Array();
+      for (let p of pLine) morphParams.pLineBkup.push(new Vec2d(p));
+      morphParams.timer = setInterval(morphAnimation, morphParams.intervalMS);
+    } else {
+      if(morphParams.timer != null) {
+        stopAnimation();
+      }
+    }
+  }
+}
+
+function stopAnimation() {
+  clearInterval(morphParams.timer);
+  pLine = morphParams.pLineBkup;
+  pLineChanged = true;
+  mainCanvas_draw();
+  morphParams.ratioInt = 0;
+}
+
+function morphAnimation() {
+  morphParams.ratioInt += morphParams.ratioDiff;
+  if ( morphParams.ratioDiff > 0 ) {
+    if(morphParams.ratioInt > 130) {
+      morphParams.ratioInt = 130;
+      morphParams.ratioDiff *= -1;
+    }
+  } else {
+    if(morphParams.ratioInt < -30) {
+      morphParams.ratioInt = -30;
+      morphParams.ratioDiff *= -1;
+    }
+  }
+
+  if (morphParams.ratioInt < 0 || morphParams.ratioInt > 100) return;
+
+  pLine = new Array();
+  for (let p of morphParams.pLineBkup) {
+    pLine.push(new Vec2d(p));
+  }
+  
+  morph(morphParams.ratioInt / 100);
+
+  pLineChanged = true;
+  mainCanvas_draw();
+}
+
+function modelTypeChange(type) {
+  modelType = type;
+  if(pLine.length != 0 && (type == MODEL_TYPE_FLAP_DISK || type == MODEL_TYPE_PRISM_DISK)) {
+    pLine[0].x = 0;
+  }
+  pLineChanged = true;    
+  mainCanvas_draw();
+  if(type == MODEL_TYPE_PRISM_DISK || type == MODEL_TYPE_FLAP_DISK) {
+    document.getElementById('div_flapsize').style.visibility ="hidden";
+    document.getElementById('div_glueArea').style.visibility ="hidden";
+  } else {
+    document.getElementById('div_flapsize').style.visibility ="visible";
+    document.getElementById('div_glueArea').style.visibility ="visible";
+  }
+}
+
+function smooth() {
+  let tmpVec = [];
+  let tmpSv = pLine[0];
+  let tmpEv = pLine[pLine.length - 1];
+
+  for (let p of pLine) {
+    tmpVec.push(p);
+  }
+
+  pLine = [];
+
+  for (let i = 0; i < tmpVec.length - 1; i++) {
+    let sv = tmpVec[i];
+    let ev = tmpVec[i + 1];
+    let cv = new Vec2d(( sv.x + ev.x) / 2, (sv.y + ev.y) / 2);
+
+    pLine.push( new Vec2d(sv));
+    pLine.push( new Vec2d(cv));
+  }
+
+  pLine.push(new Vec2d(tmpVec[tmpVec.length - 1].x, tmpVec[tmpVec.length - 1].y));
+                
+  tmpVec = [];
+  
+  for ( let i = 0; i < pLine.length; i++) {
+    tmpVec.push(new Vec2d(0, 0));
+  }
+ 
+  for(let j = 0; j < pLine.length; j++) {
+    if(j > 0 && j < pLine.length -1) {
+      tmpVec[j].x = pLine[j-1].x * 0.25 + pLine[j].x * 0.5 + pLine[j+1].x * 0.25;
+      tmpVec[j].y = pLine[j-1].y * 0.25 + pLine[j].y * 0.5 + pLine[j+1].y * 0.25;
+    } else {
+      tmpVec[j].set(pLine[j]);
+    }
+  }
+            
+  for(let j = 0; j < pLine.length; j++) {
+    pLine[j].set(tmpVec[j]);
+  }  
+}
+
+function windowResized() {
+  mainCanvas.width = wrapper1.getBoundingClientRect().width;
+  mainCanvas.height = wrapper1.getBoundingClientRect().height;
+  mainCanvas_draw();
+  onWindowResize3d();
+  windowResizedCP();
+}
+
+function mainCanvas_drawGrid(ctx) {
+  ctx.strokeStyle = COLOR_GRID;
+  let W = GRID_AREA_W;
+  let d = W / gridDivNum;
+
+  if (bShowGrid) {
+    for (let x = -W; x <= W; x+= d) {
+      ctx.beginPath();
+      ctx.moveTo(x, -W);    
+      ctx.lineTo(x, W);
+      ctx.stroke();    
+
+      ctx.beginPath();
+      ctx.moveTo(-W, x);    
+      ctx.lineTo(W, x);
+      ctx.stroke();    
+    }
+  }
+
+  ctx.strokeStyle = COLOR_AXIS;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, -W);    
+  ctx.lineTo(0, W);
+  ctx.stroke();    
+  ctx.lineWidth = 1;
+}
+
+function mainCanvas_draw() {
+  let ctx = mainCanvas.getContext('2d');
+  let rect = mainCanvas.getBoundingClientRect();
+
+  // clear
+  ctx.fillStyle = 'rgb(255, 255, 255)';
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+
+  // set view
+	ctx.translate( mainCanvas.width/2, mainCanvas.height/2);
+	ctx.scale(mainCanvas_scale, mainCanvas_scale);
+	ctx.translate(mainCanvas_transVec.x, mainCanvas_transVec.y);
+
+  // drawGrid
+  mainCanvas_drawGrid(ctx);
+    
+  ctx.strokeStyle = COLOR_PLINE;
+  ctx.fillStyle = COLOR_POINT;
+
+  // point
+  for (let i = 0; i < pLine.length; ++i) {
+	  ctx.beginPath();
+		ctx.arc(pLine[i].x, pLine[i].y, POINT_SIZE, 0, Math.PI * 2, true);
+		ctx.fill();
+  }
+
+  if ( pickCandidatePointIndex != -1 ) {
+    ctx.fillStyle = COLOR_SELECTED_POINT;
+    ctx.beginPath();
+    ctx.arc(pLine[pickCandidatePointIndex].x, pLine[pickCandidatePointIndex].y, 3 * POINT_SIZE, 0, Math.PI*2, true);
+		ctx.fill();
+  }
+
+  // polyline
+  if (pLine.length > 1) {
+    ctx.beginPath();
+    ctx.moveTo(pLine[0].x, pLine[0].y);
+    for (let i = 1; i < pLine.length; ++i) {
+      ctx.lineTo(pLine[i].x, pLine[i].y);
+    }
+		ctx.stroke();
+  }
+
+  if (pLineChanged) {
+    update3DModel();
+    cpCanvas_draw();
+  }
+
+  pLineChanged = false;
+}
+
+function mainCanvas_onMouseDown(e) {
+  let rect = mainCanvas.getBoundingClientRect();
+  let mouseX = e.clientX - rect.left;
+  let mouseY = e.clientY - rect.top;
+  let preMouseX = mouseX;
+  let preMouseY = mouseY;
+  mainCanvas_pressedMouseX = preMouseX;
+  mainCanvas_pressedMouseY = preMouseY;
+  mainCanvas_pressedMouseButton = e.which;
+  draggingPointIndex = -1;
+
+  if (mainCanvas_pressedMouseButton == 1) {
+    let px = (mouseX - mainCanvas.width/2) / mainCanvas_scale  - mainCanvas_transVec.x;
+    let py = (mouseY - mainCanvas.height/2) / mainCanvas_scale - mainCanvas_transVec.y ;
+
+    let pickedIndex = pickPointIndex(px, py);
+ 		if (pickedIndex != -1) {
+      if (event.getModifierState( "Control" )) { // Ctrlを押していたら頂点を分割
+    	  let i = pickPointIndex(px, py);
+        if ( i != -1 ) {          
+          pLine.splice(i, 0, new Vec2d(px, py));
+        }
+      }
+      draggingPointIndex = pickedIndex;
+    }
+  }
+
+  e.preventDefault();
+}
+
+function getSnappedPoint(px, py) {
+  let grid_interval = GRID_AREA_W / gridDivNum;
+  return new Vec2d(Math.floor((px + grid_interval * 0.5)/ grid_interval) * grid_interval,
+    Math.floor((py + grid_interval * 0.5)/ grid_interval) * grid_interval);
+}
+
+function pickPointIndex(px, py) {
+  if (pLine.length == 0 ) return -1;
+
+  let nearestPointIndex = -1;
+  let minDist = 10; // px
+
+  for ( let i = 0; i < pLine.length; ++i) {
+    let dist = getDistance(pLine[i].x, pLine[i].y, px, py);
+    if ( dist < minDist) {
+      minDist = dist;
+      nearestPointIndex = i;
+    }
+  }
+
+  return nearestPointIndex;
+}
+
+function mainCanvas_onMouseUp(e) {
+  let rect = mainCanvas.getBoundingClientRect();
+  let mouseX = e.clientX - rect.left;
+  let mouseY = e.clientY - rect.top;
+  pickCandidatePointIndex = -1;
+
+  // add a point
+  if ( mainCanvas_pressedMouseButton == 1 ) {
+    if(draggingPointIndex != -1) {
+      mainCanvas_draw();
+      mainCanvas_pressedMouseButton = -1;
+      return;
+    }
+
+    let px = (mouseX - mainCanvas.width/2) / mainCanvas_scale  - mainCanvas_transVec.x;
+    let py = (mouseY - mainCanvas.height/2) / mainCanvas_scale - mainCanvas_transVec.y;
+
+    // snap to grid
+    if(bShowGrid) {
+      let p2 = getSnappedPoint(px, py);
+      px = p2.x;
+      py = p2.y;
+    }
+
+    // 最後の点に近すぎたら追加しない
+    if (pLine.length != 0) {
+      let lastP = pLine[pLine.length - 1];
+      if (getDistance(px, py, lastP.x, lastP.y) < 2) {
+        mainCanvas_pressedMouseButton = -1;
+        return;
+      }
+    }
+
+    pLine.push(new Vec2d(px, py));
+    pLineChanged = true;
+    mainCanvas_draw();
+
+  // right click : remove a point
+  } else if ( mainCanvas_pressedMouseButton == 3) {
+    if ( Math.abs(mouseX - mainCanvas_pressedMouseX) > 3 || Math.abs(mouseY - mainCanvas_pressedMouseY) > 3 ) {
+        mainCanvas_pressedMouseButton = -1;
+      return; // drag
+    }
+
+    if (pLine.length == 0 ) return;
+
+    let px = (mouseX - mainCanvas.width/2) / mainCanvas_scale  - mainCanvas_transVec.x;
+    let py = (mouseY - mainCanvas.height/2) / mainCanvas_scale - mainCanvas_transVec.y ;
+
+    let nearestPointIndex = -1;
+    let minDist = 10; // px
+
+    for ( let i = 0; i < pLine.length; ++i) {
+      let dist = getDistance(pLine[i].x, pLine[i].y, px, py);
+      if ( dist < minDist) {
+        minDist = dist;
+        nearestPointIndex = i;
+      }
+    }
+
+    if(nearestPointIndex != -1) {
+      pLine.splice(nearestPointIndex, 1);
+    } else {
+      pLine.pop();
+    }
+    pLineChanged = true;
+    mainCanvas_draw();
+  }
+
+  mainCanvas_pressedMouseButton = -1
+  e.preventDefault();
+}
+
+function mainCanvas_onMouseMove(e) {
+  let rect = mainCanvas.getBoundingClientRect();
+  let mouseX = e.clientX - rect.left;
+  let mouseY = e.clientY - rect.top;
+
+	if( mainCanvas_pressedMouseButton == 3){ // right	
+    mainCanvas_transVec.x += (mouseX - mainCanvas_preMouseX);
+    mainCanvas_transVec.y += (mouseY - mainCanvas_preMouseY);
+		
+    mainCanvas_draw();
+
+	} else if (mainCanvas_pressedMouseButton == 1) {
+    if(draggingPointIndex != -1) {
+      let px = (mouseX - mainCanvas.width/2) / mainCanvas_scale  - mainCanvas_transVec.x;
+      let py = (mouseY - mainCanvas.height/2) / mainCanvas_scale - mainCanvas_transVec.y;
+
+      // snap to grid
+      if(bShowGrid) {
+        let p2 = getSnappedPoint(px, py);
+        px = p2.x;
+        py = p2.y;
+      }
+
+/*      if(modelType == MODEL_TYPE_PRISM_CYLINDER || modelType == MODEL_TYPE_PRISM_DISK) {
+        if(px < 0) px = 0;
+      }*/
+
+      pLine[draggingPointIndex].x = px;
+      pLine[draggingPointIndex].y = py;
+      pLineChanged = true;
+      mainCanvas_draw();
+    }
+  } else {
+    let px = (mouseX - mainCanvas.width/2) / mainCanvas_scale  - mainCanvas_transVec.x;
+    let py = (mouseY - mainCanvas.height/2) / mainCanvas_scale - mainCanvas_transVec.y;
+    pickCandidatePointIndex = pickPointIndex(px, py);
+    mainCanvas_draw();
+
+  }
+  mainCanvas_preMouseX = mouseX;
+  mainCanvas_preMouseY = mouseY;
+
+  e.preventDefault();
+}
+
+function mainCanvas_onMouseWheel(e) {
+	let delta = e.deltaY ? -(e.deltaY) : e.wheelDelta ? e.wheelDelta : -(e.detail);
+	mainCanvas_scale += 0.1 * ((delta < 0) ? -1: 1);
+	if(mainCanvas_scale <= 0) { mainCanvas_scale = 0.1; }
+  mainCanvas_draw();
+  e.preventDefault();
+}
+
+///////////////////////////////////////////////////////////////////////////
+// 3D Model Canvas
+///////////////////////////////////////////////////////////////////////////
+
+const EDGE_TYPE_BORDER = 0;
+const EDGE_TYPE_MOUNTAIN = 1;
+const EDGE_TYPE_VALLEY = 2;
+
+class CPEdge {
+  sp;
+  ep;
+  type; 
+
+  constructor(sp, ep, type) {
+    this.sp = sp;
+    this.ep = ep;
+    this.type = type;
+  }
+}
+
+let modelScreen_preMouseX = 0;
+let modelScreen_preMouseY = 0;
+let modelScreen_mouseButton;
+
+let camera, scene, renderer;
+let group;
+let modelIndex = 1;
+
+let material;
+let linecolor = 0x000000;
+let rotateY = 0;
+let rotateX = 0;
+
+let cpEdges = [];
+let cpMinCoordinate = new Vec2d(0,0);
+let cpMaxCoordinate = new Vec2d(0,0);
+
+let  container = document.getElementById("wrapper2");
+  container.addEventListener('mousemove', onModelViewMouseMove, false);
+  container.addEventListener('mouseup', onModelViewMouseUp, false);
+  container.addEventListener('mousedown', onModelViewMouseDown, false);
+	container.addEventListener('wheel', onModelViewMouseWheel, false);
+      
+const LineMat = new THREE.LineBasicMaterial({ color: linecolor, linewidth: 1 });
+let geometry;
+
+// start
+modelScreen_init();
+
+
+function faceOpacityChange(i) {
+  faceOpacity = Number(i)/100;
+  document.getElementById("FaceOpacity").innerText = i;
+	material.setValues({opacity:faceOpacity});
+  render();
+  cpCanvas_draw();
+}
+
+function modelScreen_init() {
+	// scene
+  scene = new THREE.Scene();
+
+	// camera
+  camera = new THREE.PerspectiveCamera(60, container.getBoundingClientRect().width / container.getBoundingClientRect().height, 10, 1000);
+  camera.position.set(0, 0, 200);
+  scene.add(camera);
+
+	// light
+  let light = new THREE.PointLight(0xffffff, 1);
+  light.position.set(100,100,100);
+  camera.add(light);
+            
+  let light2 = new THREE.AmbientLight( 0xc0c0c0 ); // soft white light
+  scene.add( light2 );
+
+  // material
+  material = new THREE.MeshPhongMaterial({
+   	side: THREE.DoubleSide,                                 
+   	color: 0xffffff, 
+   	specular:0xffffff,
+ 		shininess:0,
+		opacity:1.0,
+		transparent:true
+ 	});
+
+	material.polygonOffset = true;		
+  material.depthTest = true;
+	material.polygonOffsetFactor = 1;
+	material.polygonOffsetUnits = 0.1;
+
+	// model
+  buildModel();
+	        
+	// renderer
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setClearColor(BACK_COLOR_3D_SCREEN);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(container.getBoundingClientRect().width*0.98, container.getBoundingClientRect().height*0.98);
+  //        renderer.setSize(container.getBoundingClientRect().width, container.getBoundingClientRect().height);
+	container.appendChild(renderer.domElement);
+  renderer.render(scene, camera);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function buildModel_Cylindrical_Flap() {
+  geometry = new THREE.BufferGeometry();
+  let N = modelDivNum;
+  let flapMargin = flapSize * 0.01;
+  let maxX = Math.abs(pLine[0].x);
+  let h = new Array(pLine.length);
+  let preX = pLine[0].x;
+  cpEdges = [];
+  h[0] = 0;
+
+  // 3Dモデルの中心を求めるため
+  let minY = pLine[0].y;
+  let maxY = pLine[0].y;
+
+  // 水平な折り線の位置計算  
+  for( let i = 1; i < pLine.length; i++ ) {
+    let x = pLine[i].x;
+    maxX = Math.max(maxX, Math.abs(x));
+    let l = getDistance(pLine[i], pLine[i-1]);
+    let diffX = (x - preX) * Math.sin(Math.PI / N);
+    h[i] = Math.sqrt( l * l - diffX * diffX) + h[i-1];
+    preX = x;
+
+    minY = Math.min(minY, pLine[i].y);
+    maxY = Math.max(maxY, pLine[i].y);
+  }
+
+  let centerY = (minY + maxY)/2;
+
+  // generate CP
+  maxX *= (1.0 + flapMargin);
+  let height = h[pLine.length - 1];
+  let unitWidth = 2 * maxX * Math.sin(Math.PI / N);
+
+  // 縦線を生成してしまう
+  for(let i = 0; i < N+1; i++) {
+    let x = unitWidth * i;
+    if (i == N || (i == 0 && !bDrawGlueArea)) {
+      cpEdges.push( new CPEdge(new Vec2d(x, 0), new Vec2d(x, height), EDGE_TYPE_BORDER));
+    } else {
+      cpEdges.push( new CPEdge(new Vec2d(x, 0), new Vec2d(x, height), EDGE_TYPE_MOUNTAIN));
+    }
+  }
+
+  if(bDrawGlueArea) {
+    let x = - unitWidth * 0.2;
+    cpEdges.push( new CPEdge(new Vec2d(x, 0), new Vec2d(x, height), EDGE_TYPE_BORDER));
+  }
+        
+  // 上下のカットライン
+  let x = bDrawGlueArea ? - unitWidth * 0.2 : 0;
+  cpEdges.push(new CPEdge(new Vec2d(x, 0), new Vec2d(unitWidth * N, 0), EDGE_TYPE_BORDER));
+  cpEdges.push(new CPEdge(new Vec2d(x, height), new Vec2d(unitWidth * N, height), EDGE_TYPE_BORDER));
+
+  for(let i = 0; i < N; i++) {
+    // 斜めの折り線
+    for(let j = 0; j < pLine.length - 1; j++) {
+      let x0 = unitWidth * i + (maxX - pLine[j].x) * Math.sin(Math.PI / N);
+      let x1 = unitWidth * i + (maxX - pLine[j+1].x) * Math.sin(Math.PI / N);
+      cpEdges.push(new CPEdge(new Vec2d(x0, h[j]), new Vec2d(x1, h[j+1]), EDGE_TYPE_VALLEY));
+    }
+
+    // 横線
+      // 上から下に向かうか、下から上に向かうかで逆転する
+      let MVreverce = pLine[0].y < pLine[pLine.length - 1].y;
+
+      for(let j = 1; j < pLine.length - 1; j++) {
+        if(bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j], pLine[j+1])) < Math.PI /180.0 * hideAngleDeg) continue;
+        let bRidge = Vec2d.Cross(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j+1], pLine[j])) > 0;
+
+        if (MVreverce) { bRidge = !bRidge; }
+                
+        let x0 = unitWidth * i;
+        let x1 = unitWidth * i + (maxX - pLine[j].x)* Math.sin(Math.PI / N);
+        let x2 = unitWidth * (i+1);
+        let y0 = h[j];//v0.y;
+
+        if(bDrawGlueArea && i == 0) {
+          let x = - unitWidth * 0.2;
+          cpEdges.push( new CPEdge(new Vec2d(x, y0), new Vec2d(0, y0), bRidge ? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_VALLEY));
+        }
+                
+        cpEdges.push(new CPEdge( new Vec2d(x1, y0), new Vec2d(x2, y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY ));                  
+        if(pLine[j].x == maxX) { continue; } // 1本だけのケース
+               
+        cpEdges.push(new CPEdge( new Vec2d(x0, y0), new Vec2d(x1, y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));                  
+      }
+  }
+
+  // 3Dモデルと整合を取るために折り線のx座標を反転する
+  for( let i = 0; i < cpEdges.length; i++) {
+  	cpEdges[i].sp.x *= -1;
+    cpEdges[i].ep.x *= -1;
+  }
+
+  cpScale(cpEdges, 0.3);
+  if(bDrawGlueArea) {
+    GlueArea.x = unitWidth * 0.2;
+    GlueArea.y = 0;
+    GlueArea.w = - unitWidth * 0.2;
+    GlueArea.h = height;
+
+    GlueArea.x *= 0.3;
+    GlueArea.y *= 0.3;
+    GlueArea.w *= 0.3;
+    GlueArea.h *= 0.3;
+  }
+  cpMinCoordinate = cpGetMinCoordinate(cpEdges);
+  cpMaxCoordinate = cpGetMaxCoordinate(cpEdges);
+
+  // generate 3D model
+  let vIndex = 0;
+  let modelScale = 0.2;
+  let vertices = [];
+  let indices = [];
+  let normals = [];
+  let points_for_line = [];
+
+  for(let j = 0; j < pLine.length - 1; j++) {
+
+    let v0 = pLine[j];
+    let v1 = pLine[j+1];
+    let faceV = new Array(4);
+    faceV[0] = new Vec3d(v0.x, 0, v0.y);
+    let a0 = 2 * v0.x * Math.sin(Math.PI / N);
+    let b0 = (unitWidth - a0) /2;
+    let b0x = v0.x - (a0 + b0) * Math.cos(Math.PI * ( 0.5 - 1.0 / N));
+    let b0y = (a0 + b0) * Math.sin(Math.PI * ( 0.5 - 1.0 / N ));
+    faceV[1] = new Vec3d(b0x, b0y, v0.y);
+                
+    let a1 = 2 * v1.x * Math.sin( Math.PI / N );
+    let b1 = (unitWidth - a1) /2;
+    let b1x = v1.x - (a1+b1) * Math.cos(Math.PI * ( 0.5 - 1.0 / N));
+    let b1y = (a1 + b1) * Math.sin( Math.PI * ( 0.5 - 1.0 / N));
+    faceV[2] = new Vec3d(b1x, b1y, v1.y);
+    faceV[3] = new Vec3d(v1.x, 0, v1.y);
+                
+    // 裏側の面 // xがマイナスの値をとる場合に必要になる
+    let faceV2 = new Array(4);
+    faceV2[0] = new Vec3d(faceV[1]);
+
+    let c0_len = unitWidth - getDistance(faceV[0], faceV[1]);
+    let c1_len = unitWidth - getDistance(faceV[2], faceV[3]);
+    let dir_b0_c0 = Vec3d.Sub(faceV[1], faceV[0]);  dir_b0_c0.setLen(c0_len);      
+    faceV2[1] = Vec3d.Sub(faceV[1], dir_b0_c0);
+
+    let dir_b1_c1 = Vec3d.Sub(faceV[2], faceV[3]); dir_b1_c1.setLen(c1_len);                
+    faceV2[2] = Vec3d.Sub(faceV[2], dir_b1_c1);
+    faceV2[3] = new Vec3d(faceV[2]);
+
+    // 長さゼロの対処
+    if(c0_len < 0.001) { faceV2[1] = faceV2[0]; }
+    if(c1_len < 0.001) { faceV2[2] = faceV2[3]; }
+
+    // 描画するエッジ
+    let edges = [[1,2], [3,0]]; // 左右
+    if(j == 0) {
+      edges.push([0,1]); // 上端
+    } else {
+      let bHideH = (bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j], pLine[j+1])) < Math.PI /180.0 * hideAngleDeg);
+      if(!bHideH) {
+        edges.push([0,1]);
+      }
+    }
+
+    if(j == pLine.length -2) {
+      edges.push([2,3]); // 下端
+    }
+
+    for(let i = 0; i < N; i++) {
+      let angle = 2 * Math.PI / N * i;
+      let fv = new Array(4);
+ 
+      for(let k = 0; k < 4; k++) {
+        fv[k] = new Vec3d();
+        // 回転させる
+        fv[k].z = faceV[k].z - centerY;
+        fv[k].x = faceV[k].x * Math.cos(angle) - faceV[k].y * Math.sin(angle);
+        fv[k].y = faceV[k].x * Math.sin(angle) + faceV[k].y * Math.cos(angle);
+        fv[k].scale(modelScale);
+
+        vertices.push(fv[k].x,  -fv[k].z, fv[k].y );
+      }
+
+      let nomalVec = Vec3d.Cross(Vec3d.Sub(fv[1], fv[0]), Vec3d.Sub(fv[2], fv[0]));
+      for(let k = 0; k < 4; k++)
+        normals.push(nomalVec.x,  -nomalVec.z, nomalVec.y );
+
+      for (let e of edges ) {
+        let si = e[0];
+        let ei = e[1];
+        points_for_line.push( new THREE.Vector3(fv[si].x,  -fv[si].z, fv[si].y));
+        points_for_line.push( new THREE.Vector3(fv[ei].x,  -fv[ei].z, fv[ei].y));
+      }
+
+      indices.push( vIndex, vIndex + 1, vIndex + 2 );
+      indices.push( vIndex, vIndex + 2, vIndex + 3 );
+      vIndex += 4;
+    }
+
+    // 裏側
+    for(let i = 0; i < N; i++) {
+      let angle = 2 * Math.PI / N * i;
+      let fv2 = new Array(4);
+        
+      for(let k = 0; k < 4; k++) {
+        fv2[k] = new Vec3d();
+        // 回転させる
+        fv2[k].z = faceV2[k].z - centerY;
+        fv2[k].x = faceV2[k].x * Math.cos(angle) - faceV2[k].y * Math.sin(angle);
+        fv2[k].y = faceV2[k].x * Math.sin(angle) + faceV2[k].y * Math.cos(angle);
+        fv2[k].scale(modelScale);
+
+        vertices.push(fv2[k].x,  -fv2[k].z, fv2[k].y );
+      }
+      let nomalVec = Vec3d.Cross(Vec3d.Sub(fv2[1], fv2[0]), Vec3d.Sub(fv2[2], fv2[0]));
+      for(let k = 0; k < 4; k++)
+        normals.push(nomalVec.x,  -nomalVec.z, nomalVec.y );
+
+      for (let e of edges ) {
+        let si = e[0];
+        let ei = e[1];
+        points_for_line.push( new THREE.Vector3(fv2[si].x,  -fv2[si].z, fv2[si].y));
+        points_for_line.push( new THREE.Vector3(fv2[ei].x,  -fv2[ei].z, fv2[ei].y));
+
+      }
+      indices.push( vIndex, vIndex + 1, vIndex + 2 );
+      indices.push( vIndex, vIndex + 2, vIndex + 3 );
+
+      vIndex += 4;
+    }
+  }
+  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));       
+
+  geometry.setIndex( indices );
+  geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+  geometry.setAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
+  group.add(new THREE.Mesh(geometry, material));    
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function buildModel_Cylindrical_Prism() {
+  let vNum = pLine.length;
+  geometry = new THREE.BufferGeometry();
+  let N = modelDivNum;
+  let flapMargin = flapSize * 0.01;
+  let maxX = Math.abs(pLine[0].x);
+  let h = new Array(pLine.length);
+  let preX = pLine[0].x;
+  cpEdges = [];
+  h[0] = 0;
+
+  // 3Dモデルの中心を求めるため
+  let minY = pLine[0].y;
+  let maxY = pLine[0].y;
+  let centerY = minY;
+
+  // 水平な折り線の位置計算  
+  for( let i = 1; i < pLine.length; i++ ) {
+    let x = pLine[i].x;
+    maxX = Math.max(maxX, Math.abs(x));
+    let l = getDistance(pLine[i], pLine[i-1]);
+    let diffX = (x - preX) * Math.sin(Math.PI / N);
+    h[i] = Math.sqrt( l * l - diffX * diffX) + h[i-1];
+    preX = x;
+
+    minY = Math.min(minY, pLine[i].y);
+    maxY = Math.max(maxY, pLine[i].y);
+  }
+  centerY = (minY + maxY)/2;
+
+  // generate CP
+  maxX *= (1.0 + flapMargin);
+  let height = h[pLine.length - 1];
+  let unitWidth = 2 * maxX * Math.sin(Math.PI / N);
+
+        
+  // 上下のカットライン
+  let x = bDrawGlueArea ? - unitWidth * 0.2 : 0;
+  cpEdges.push(new CPEdge(new Vec2d(x, 0), new Vec2d(unitWidth * N, 0), EDGE_TYPE_BORDER));
+  cpEdges.push(new CPEdge(new Vec2d(x, height), new Vec2d(unitWidth * N, height), EDGE_TYPE_BORDER));
+
+  // 左右のカットライン
+  if(bDrawGlueArea) {
+    let x = - unitWidth * 0.2;
+    cpEdges.push( new CPEdge(new Vec2d(x, 0), new Vec2d(x, height), EDGE_TYPE_BORDER));
+    cpEdges.push(new CPEdge(new Vec2d(0, 0), new Vec2d(0, height), EDGE_TYPE_MOUNTAIN));
+  } else {
+    cpEdges.push(new CPEdge(new Vec2d(0, 0), new Vec2d(0, height), EDGE_TYPE_BORDER));
+  }
+  cpEdges.push( new CPEdge(new Vec2d(unitWidth * N, 0), new Vec2d(unitWidth * N, height), EDGE_TYPE_BORDER));
+
+  for(let i = 0; i < N; i++) {
+    // 縦の折り線
+    for(let j = 0; j < vNum - 1; j++) {
+      let v0 = pLine[j];
+      let v1 = pLine[j+1];
+
+      let lx0 = unitWidth * i + (maxX - v0.x)* Math.sin(Math.PI / N);
+      let lx1 = unitWidth * i + (maxX - v1.x)* Math.sin(Math.PI / N);
+      let y0 = h[j];//v0.y;
+      let y1 = h[j+1];//v1.y;
+      cpEdges.push( new CPEdge (new Vec2d(lx0, y0), new Vec2d(lx1, y1), EDGE_TYPE_VALLEY));           
+
+      let rx0 = unitWidth * (i + 1) - (maxX - v0.x)* Math.sin(Math.PI / N);
+      let rx1 = unitWidth * (i + 1) - (maxX - v1.x)* Math.sin(Math.PI / N);
+      cpEdges.push( new CPEdge(new Vec2d(rx0, y0), new Vec2d(rx1, y1), EDGE_TYPE_VALLEY));                         
+              
+      let BD0 = (maxX - v0.x)* Math.sin(Math.PI / N);
+      let BC0 = BD0 / (1 + Math.cos(Math.PI / N));
+      let BD1 = (maxX - v1.x)* Math.sin(Math.PI / N);
+      let BC1 = BD1 / (1 + Math.cos(Math.PI / N));
+              
+      let rrx0 = rx0 + BC0;
+      let rrx1 = rx1 + BC1;
+      let llx0 = lx0 - BC0;
+      let llx1 = lx1 - BC1;
+      cpEdges.push( new CPEdge(new Vec2d(rrx0, y0), new Vec2d(rrx1, y1), EDGE_TYPE_MOUNTAIN));                         
+      cpEdges.push( new CPEdge(new Vec2d(llx0, y0), new Vec2d(llx1, y1), EDGE_TYPE_MOUNTAIN));                         
+
+      if(j == 0 || !bHideHline) { continue; }
+
+      // 横の折り線
+      if(bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j], pLine[j+1])) < Math.PI /180.0 * hideAngleDeg) continue;
+
+      let v2 = pLine[j-1];
+      let bRidge = Vec2d.Cross(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j+1], pLine[j])) > 0;
+      let left_x = unitWidth * i;
+      let right_x = unitWidth * (i+1);
+              
+      if(v0.x == maxX) { // 1本だけのケース
+        cpEdges.push( new CPEdge(new Vec2d(left_x, y0), new Vec2d(right_x, y0), !bRidge ? EDGE_TYPE_MOUNTAIN  : OriLine.EDGE_TYPE_VALLEY));                         
+        continue;                    
+      }
+              
+      cpEdges.push( new CPEdge(new Vec2d(left_x, y0), new Vec2d(llx0,      y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY ));                   
+      cpEdges.push( new CPEdge(new Vec2d(llx0,   y0), new Vec2d( lx0,      y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));                   
+      cpEdges.push( new CPEdge(new Vec2d(lx0,    y0), new Vec2d( rx0,      y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY));                   
+      cpEdges.push( new CPEdge(new Vec2d(rx0,    y0), new Vec2d( rrx0,     y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));                   
+      cpEdges.push( new CPEdge(new Vec2d(rrx0,   y0), new Vec2d( right_x,  y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY));    
+      
+      if(bDrawGlueArea && i == 0) {
+        let x = - unitWidth * 0.2;
+        cpEdges.push( new CPEdge(new Vec2d(x, y0), new Vec2d(0, y0), bRidge ? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_VALLEY));
+      }
+      
+    }
+  }
+
+  // 3Dモデルと整合を取るために折り線のx座標を反転する
+  for( let i = 0; i < cpEdges.length; i++) {
+  	cpEdges[i].sp.x *= -1;
+    cpEdges[i].ep.x *= -1;
+  }
+
+  cpScale(cpEdges, 0.3);
+  if(bDrawGlueArea) {
+    GlueArea.x = unitWidth * 0.2;
+    GlueArea.y = 0;
+    GlueArea.w = - unitWidth * 0.2;
+    GlueArea.h = height;
+
+    GlueArea.x *= 0.3;
+    GlueArea.y *= 0.3;
+    GlueArea.w *= 0.3;
+    GlueArea.h *= 0.3;
+  }
+  cpMinCoordinate = cpGetMinCoordinate(cpEdges);
+  cpMaxCoordinate = cpGetMaxCoordinate(cpEdges);
+
+  // generate 3D model
+  let vIndex = 0;
+  let modelScale = 0.2;
+  let vertices = [];
+  let indices = [];
+  let normals = [];
+  let points_for_line = [];
+
+  // 各線分の長さを格納
+  let l = new Array(vNum-1);
+  for(let i = 0; i < vNum-1; i++) {
+    l[i] = getDistance(pLine[i], pLine[i+1]);
+  }  
+
+  let vVec = [];
+
+  for(let j = 0; j < vNum; j++) {
+        
+    let z = pLine[j].y;
+    let d = pLine[j].x;
+
+    let lenAB = d * Math.sin(Math.PI/N);
+    let lenBCD = (maxX - d)* Math.sin(Math.PI / N);
+    let lenBC = lenBCD / (1 + Math.cos(Math.PI / N));         
+    let lenBD = lenBC * Math.sin(Math.PI/N);
+    let lenCD = lenBC * Math.cos(Math.PI/N);
+    let pA = new Vec3d( lenAB, -d * Math.cos(Math.PI/N), z);
+    let pB = new Vec3d(-lenAB, -d * Math.cos(Math.PI/N), z);
+          
+    let vecOB = new Vec2d(-Math.sin(Math.PI/N), -Math.cos(Math.PI/N));
+    let pD = new Vec3d(pB.x + vecOB.x * lenBD, pB.y + vecOB.y * lenBD, z);
+    let vecDC = new Vec2d(-vecOB.y, vecOB.x);
+    let pC = new Vec3d(pD.x + vecDC.x * lenCD, pD.y + vecDC.y * lenCD, z);
+     
+    pD.set(pB.x - lenBC, -d * Math.cos(Math.PI/N), z);
+          
+    vVec.push(pA);
+    vVec.push(pB);
+    vVec.push(pC);
+    vVec.push(pD);
+    vVec.push(pB);
+  }
+
+  let vNumPerLayer = 5;
+  for(let j = 0; j < vNum-1; j++) {
+    let tmpFace = [];
+    for(let i = 0; i < vNumPerLayer-1; i++) {
+       	  
+  	  // 四角形のための頂点を準備
+      let v = new Array(4);
+      v[0] = new Vec3d(vVec[j*vNumPerLayer+i]);
+      v[1] = new Vec3d(vVec[j*vNumPerLayer+i+vNumPerLayer]);
+      v[2] = new Vec3d(vVec[j*vNumPerLayer+i+1+vNumPerLayer]);
+      v[3] = new Vec3d(vVec[j*vNumPerLayer+i+1]);
+      tmpFace.push(v);
+    }
+
+    // 描画するエッジ
+    let edges = [[0,1], [2,3]]; // 左右
+    if(j == 0) {
+      edges.push([3,0]); // 上端
+    } else {
+      let bHideH = (bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j], pLine[j+1])) < Math.PI /180.0 * hideAngleDeg);
+      if(!bHideH) {
+        edges.push([3,0]);
+      }
+    }
+
+    if(j == pLine.length -2) {
+      edges.push([1,2]); // 下端
+    }
+
+
+    for(let vs of tmpFace) {
+      for(let i = 0; i < N; i++) {
+        let angle = 2 * Math.PI / N * i;
+        let fv = new Array(4);
+      
+        for(let k = 0; k < 4; k++) {
+          fv[k] = new Vec3d();
+          // 回転させる
+          fv[k].z = vs[k].z - centerY;
+          fv[k].x = vs[k].x * Math.cos(angle) - vs[k].y * Math.sin(angle);
+          fv[k].y = vs[k].x * Math.sin(angle) + vs[k].y * Math.cos(angle);
+
+          fv[k].scale(modelScale);
+          vertices.push(fv[k].x,  -fv[k].z, fv[k].y );
+        }                    
+        let nomalVec = Vec3d.Cross(Vec3d.Sub(fv[1], fv[0]), Vec3d.Sub(fv[2], fv[0]));
+        for(let k = 0; k < 4; k++)
+          normals.push(nomalVec.x,  -nomalVec.z, nomalVec.y );
+
+        for (let e of edges ) {
+          let si = e[0];
+          let ei = e[1];
+          points_for_line.push( new THREE.Vector3(fv[si].x,  -fv[si].z, fv[si].y));
+          points_for_line.push( new THREE.Vector3(fv[ei].x,  -fv[ei].z, fv[ei].y));
+        }
+
+        indices.push( vIndex, vIndex + 1, vIndex + 2 );
+        indices.push( vIndex, vIndex + 2, vIndex + 3 );
+        vIndex += 4;
+      }
+    }
+  }
+
+  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));       
+
+  geometry.setIndex( indices );
+  geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+  geometry.setAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
+  group.add(new THREE.Mesh(geometry, material));    
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function buildModel_Disk_Flap() {
+  geometry = new THREE.BufferGeometry();
+  let N = modelDivNum;
+  let vNum = pLine.length;
+  let maxX = Math.abs(pLine[0].x);
+  let h = new Array(pLine.length);
+  let preX = pLine[0].x;
+  cpEdges = [];
+  h[0] = 0;
+
+  pLine[0].x = 0;
+
+
+  // 3Dモデルの中心を求めるため
+  let minY = pLine[0].y;
+  let maxY = pLine[0].y;
+  let centerY = minY;
+
+  // 各線分の長さを格納
+  let l = new Array(vNum-1);
+  for(let i = 0; i < vNum-1; i++) {
+    l[i] = getDistance(pLine[i], pLine[i+1]);
+  }
+
+  // generate CP
+  // 放射状の線の長さの算出
+  let len = 0;
+        
+  // 水平方向の長さ（x軸方向の長さ）
+  let firstElementLen = 0;
+  for(let i = 1; i < vNum; i++) {
+    let v0 = pLine[i-1];
+    let v1 = pLine[i];
+    
+    len += Math.sqrt(l[i-1]*l[i-1]-(v1.x-v0.x)*(v1.x-v0.x)*Math.sin(Math.PI/N)*Math.sin(Math.PI/N));
+    if(i == 1) {  firstElementLen = len; }
+
+    minY = Math.min(minY, pLine[i].y);
+    maxY = Math.max(maxY, pLine[i].y);
+
+  }
+
+  centerY = (minY + maxY) /2;
+  // 放射線状の長さにする
+  len = len / Math.cos(Math.PI/N);
+       
+  // 最初の線が水平かどうか（平らな底面では折り線が不要なため）
+  let bFirstLineHolizontal = Math.abs(pLine[0].y - pLine[1].y) < 1;
+
+  // 最初の線が水平だったら表示しない工夫
+  let centerOffset = 0;//15; // いずれにしても中心は表示しないなら値を指定する
+  if(bFirstLineHolizontal) { 
+    centerOffset = firstElementLen / Math.cos(Math.PI/N); 
+  }
+
+  // 放射状の線を描画
+  for(let i = 0; i < N; i++) {
+    cpEdges.push(new CPEdge( new Vec2d(centerOffset* Math.cos(Math.PI/N + 2*i*Math.PI/N), 
+                            centerOffset * Math.sin(Math.PI/N + 2*i*Math.PI/N)), 
+                            new Vec2d(len * Math.cos(Math.PI/N + 2*i*Math.PI/N), 
+                            len * Math.sin(Math.PI/N + 2*i*Math.PI/N)), EDGE_TYPE_MOUNTAIN));             
+    // 外周のカット線
+    cpEdges.push(new CPEdge( new Vec2d(
+                    len * Math.cos(Math.PI/N + 2*(i+1)*Math.PI/N), 
+                    len * Math.sin(Math.PI/N + 2*(i+1)*Math.PI/N)), 
+                    new Vec2d(len * Math.cos(Math.PI/N + 2*i*Math.PI/N), 
+                    len * Math.sin(Math.PI/N + 2*i*Math.PI/N)), 
+                    EDGE_TYPE_BORDER));             
+  }
+      
+  // 放射状の谷折り線
+  for(let i = 0; i < N; i++) {
+    let rotAngle = i * Math.PI * 2 / N;
+    let preP = new Vec2d(0,0);
+    for(let j = 1; j < vNum; j++) {
+      let pre_x = pLine[j-1].x;
+      let x = pLine[j].x;
+      let px = preP.x + Math.sqrt(l[j-1]*l[j-1]-(x-pre_x)*(x-pre_x)*Math.sin(Math.PI/N)*Math.sin(Math.PI/N));
+      let py = x * Math.sin(Math.PI/N);
+      let p = new Vec2d(px, py);
+      let p0 = new Vec2d(preP);
+      let p1 = new Vec2d(p);
+      p0.rotate(rotAngle);
+      p1.rotate(rotAngle);
+      
+      if(bFirstLineHolizontal && j== 1) { /* 最初の線が水平だったら必要ないのでスキップ*/ } else {
+        cpEdges.push(new CPEdge(new Vec2d(p0), new Vec2d(p1), EDGE_TYPE_VALLEY));             
+      }
+      preP.set(p);
+    }
+             
+      preP.set(0,0);
+      for(let j = 1; j < vNum-1; j++) {                
+        // 円周方向の折り線の向きの判別
+        let bRidge = Vec2d.Cross(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j+1], pLine[j])) > 0;
+          
+        // 上から下に向かうか、下から上に向かうかで逆転する
+        if(pLine[0].y < pLine[vNum-1].y) {
+         	bRidge = !bRidge;
+        }
+                
+        let pre_x = pLine[j-1].x;
+        let x = pLine[j].x;
+        let px = preP.x + Math.sqrt(l[j-1]*l[j-1]-(x-pre_x)*(x-pre_x)*Math.sin(Math.PI/N)*Math.sin(Math.PI/N));
+        let py = x * Math.sin(Math.PI/N);
+        let py_up = px*Math.tan(Math.PI/N);                
+        let p = new Vec2d(px, py);
+        preP.set(p);
+                
+       if(bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j], pLine[j+1])) < Math.PI /180.0 * hideAngleDeg) continue;
+        
+        let p0 = new Vec2d(p.x, p.y);
+        let p1 = new Vec2d(p.x, py_up);
+        let p2 = new Vec2d(p.x, -py_up);
+        
+        p0.rotate(rotAngle);
+        p1.rotate(rotAngle);
+        p2.rotate(rotAngle);
+
+        cpEdges.push(new CPEdge(new Vec2d(p0), new Vec2d(p1), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));             
+        cpEdges.push(new CPEdge(new Vec2d(p0), new Vec2d(p2), bRidge ? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_VALLEY));            
+      }
+  }
+
+  // 3Dモデルと整合を取るために折り線のx座標を反転する
+  for( let i = 0; i < cpEdges.length; i++) {
+  	cpEdges[i].sp.x *= -1;
+    cpEdges[i].ep.x *= -1;
+  }
+
+  cpScale(cpEdges, 0.3);
+  cpMinCoordinate = cpGetMinCoordinate(cpEdges);
+  cpMaxCoordinate = cpGetMaxCoordinate(cpEdges);
+
+
+  // generate 3D model
+  let vIndex = 0;
+  let modelScale = 0.2;
+  let vertices = [];
+  let indices = [];
+  let normals = [];
+  let points_for_line = [];
+
+  let preP = new Vec2d(0,0);
+  for(let j = 1; j < vNum; j++) {
+
+    let faceV = new Array(4);
+    let faceV2 = new Array(4); // flapの裏側部分（入力線が軸を横切るケースで必要になる）
+            
+    let pre_x = pLine[j-1].x;
+    let x = pLine[j].x;
+    let px = preP.x + Math.sqrt(l[j-1]*l[j-1]-(x-pre_x)*(x-pre_x)*Math.sin(Math.PI/N)*Math.sin(Math.PI/N));
+            
+    let p0_x = preP.x;
+    let p0_y = pre_x * Math.sin(Math.PI/N);                            
+    let p1_x = preP.x;
+    let p1_y = -preP.x*Math.tan(Math.PI/N);
+          
+    let p2_x = px;
+    let p2_y = -px*Math.tan(Math.PI/N);                            
+    let p3_x = px;
+    let p3_y = x * Math.sin(Math.PI/N);
+    preP.x = px;
+            
+    // z軸方向=入力時のy軸方向
+    // y軸方向=回転軸からの距離
+    // x軸方向=水平方向の移動分。展開図でのy座標。
+    
+    faceV[0] = new Vec3d(p0_y, pre_x * Math.cos(Math.PI/N), pLine[j-1].y);
+    faceV[1] = new Vec3d(p1_y, pre_x * Math.cos(Math.PI/N), pLine[j-1].y);
+    faceV[2] = new Vec3d(p2_y, x * Math.cos(Math.PI/N), pLine[j].y);
+    faceV[3] = new Vec3d(p3_y, x * Math.cos(Math.PI/N), pLine[j].y);
+                        
+    for(let i = 0; i < 4; i++) { faceV2[i] = new Vec3d(); }
+    faceV2[0].set(faceV[2]);
+    faceV2[1].set(faceV[1]);
+    
+    // 回転させる
+    let ang = 2 * Math.PI / N;
+    faceV2[2].z = faceV[0].z;
+    faceV2[2].x = faceV[0].x * Math.cos(ang) - faceV[0].y * Math.sin(ang);
+    faceV2[2].y = faceV[0].x * Math.sin(ang) + faceV[0].y * Math.cos(ang);
+    faceV2[3].z = faceV[3].z;
+    faceV2[3].x = faceV[3].x * Math.cos(ang) - faceV[3].y * Math.sin(ang);
+    faceV2[3].y = faceV[3].x * Math.sin(ang) + faceV[3].y * Math.cos(ang);
+
+    // 描画するエッジ
+    let edges = [[1,2], [3,0]]; // 左右
+
+    if( j != pLine.length -1 ) {
+      let bHideH = (bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j], pLine[j+1])) < Math.PI /180.0 * hideAngleDeg);
+      if(!bHideH) {
+        edges.push([2,3]);
+      }
+    }
+
+    if(j == pLine.length -1) {
+      edges.push([2,3]); // 下端
+    }
+
+    for(let i = 0; i < N; i++) {
+      let angle = 2 * Math.PI / N * i;
+      let fv = new Array(4);
+
+      for(let k = 0; k < 4; k++) {
+        fv[k] = new Vec3d();
+        // 回転させる
+        fv[k].z = faceV[k].z - centerY;
+        fv[k].x = faceV[k].x * Math.cos(angle) - faceV[k].y * Math.sin(angle);
+        fv[k].y = faceV[k].x * Math.sin(angle) + faceV[k].y * Math.cos(angle);
+        fv[k].scale(modelScale);
+
+        vertices.push(fv[k].x,  -fv[k].z, fv[k].y );
+      }                    
+      let nomalVec = Vec3d.Cross(Vec3d.Sub(fv[2], fv[0]), Vec3d.Sub(fv[3], fv[0]));
+        for(let k = 0; k < 4; k++)
+          normals.push(nomalVec.x,  -nomalVec.z, nomalVec.y );
+
+      for (let e of edges ) {
+        let si = e[0];
+        let ei = e[1];
+        points_for_line.push( new THREE.Vector3(fv[si].x,  -fv[si].z, fv[si].y));
+        points_for_line.push( new THREE.Vector3(fv[ei].x,  -fv[ei].z, fv[ei].y));
+      }
+
+      indices.push( vIndex, vIndex + 1, vIndex + 2 );
+      indices.push( vIndex, vIndex + 2, vIndex + 3 );
+      vIndex += 4;
+    }
+
+    // 裏側
+    for(let i = 0; i < N; i++) {
+      let angle = 2 * Math.PI / N * i;
+      let fv2 = new Array(4);
+
+      for(let k = 0; k < 4; k++) {
+        fv2[k] = new Vec3d();
+        // 回転させる
+        fv2[k].z = faceV2[k].z  - centerY;
+        fv2[k].x = faceV2[k].x * Math.cos(angle) - faceV2[k].y * Math.sin(angle);
+        fv2[k].y = faceV2[k].x * Math.sin(angle) + faceV2[k].y * Math.cos(angle);
+        fv2[k].scale(modelScale);
+
+          vertices.push(fv2[k].x,  -fv2[k].z, fv2[k].y );
+      }
+      let nomalVec = Vec3d.Cross(Vec3d.Sub(fv2[2], fv2[0]), Vec3d.Sub(fv2[3], fv2[0]));
+        for(let k = 0; k < 4; k++)
+          normals.push(nomalVec.x,  -nomalVec.z, nomalVec.y );
+
+      for (let e of edges ) {
+        let si = (6 - e[0]) % 4;
+        let ei = (6 - e[1]) % 4;
+        points_for_line.push( new THREE.Vector3(fv2[si].x,  -fv2[si].z, fv2[si].y));
+        points_for_line.push( new THREE.Vector3(fv2[ei].x,  -fv2[ei].z, fv2[ei].y));       
+      }
+
+      indices.push( vIndex, vIndex + 1, vIndex + 2 );
+      indices.push( vIndex, vIndex + 2, vIndex + 3 );
+      vIndex += 4;
+
+    }
+  }
+
+  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));       
+
+  geometry.setIndex( indices );
+  geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+  geometry.setAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
+  group.add(new THREE.Mesh(geometry, material));    
+ }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function buildModel_Disk_Prism() {
+  geometry = new THREE.BufferGeometry();
+  let N = modelDivNum;
+  let vNum = pLine.length;
+  let maxX = Math.abs(pLine[0].x);
+  let preX = pLine[0].x;
+  cpEdges = [];
+
+  pLine[0].x = 0;
+
+  // 3Dモデルの中心を求めるため
+  let minY = pLine[0].y;
+  let maxY = pLine[0].y;
+
+  for(let i = 0; i < vNum; i++) {
+    minY = Math.min(minY, pLine[i].y);
+    maxY = Math.max(maxY, pLine[i].y);
+  }
+  let centerY = (minY + maxY)/2;
+
+  // 各線分の長さを格納
+  let l = new Array(vNum-1);
+  for(let i = 0; i < vNum-1; i++) {
+    l[i] = getDistance(pLine[i], pLine[i+1]);
+  }
+
+  // 順番に山であるか谷であるか判定する
+  let bRidgeArray = new Array(vNum-2);
+  for(let i = 1; i < vNum - 1; i++) {
+    bRidgeArray[i-1] = Vec2d.Cross(Vec2d.Sub(pLine[i-1], pLine[i]), Vec2d.Sub(pLine[i+1], pLine[i])) > 0;
+  }
+
+  let sumLen = 0;
+  let vVec2d = [];
+  vVec2d.push(new Vec2d());
+  vVec2d.push(new Vec2d());
+  vVec2d.push(new Vec2d());
+  vVec2d.push(new Vec2d());
+  let h = 0;
+  let alpha = Math.PI/N;
+  for(let j = 1; j < vNum; j++) {
+    let pA = new Vec2d();
+    let pB = new Vec2d();
+    let pC = new Vec2d();
+    let pD = new Vec2d();
+            
+    let preX = pLine[j-1].x * Math.sin(alpha);
+    let x = pLine[j].x * Math.sin(alpha);
+    let diffX = x - preX;
+    let lenAB = x;            
+    h += Math.sqrt(l[j-1]*l[j-1] - diffX * diffX);
+            
+    let lenBC = 0.5*(h*Math.tan(Math.PI/N) - lenAB);
+    let lenBD = lenBC * Math.sin(Math.PI/N);
+    let lenCD = lenBC * Math.cos(Math.PI/N);
+    pA.set(0, -h);
+    pB.set(-lenAB, -h);
+    pC.set(pB.x - lenBC, -h);
+    pD.set(pC.x - lenCD * Math.cos(Math.PI/N), pC.y + lenCD * Math.sin(Math.PI/N));
+    vVec2d.push(pA);
+    vVec2d.push(pB);
+    vVec2d.push(pC);
+    vVec2d.push(pD);
+  }      
+
+  // 最初の線が水平かどうか（平らな底面では折り線が不要なため）
+  let bFirstLineHolizontal = Math.abs(pLine[0].y - pLine[1].y) < 1;
+  
+  let tmpLines = [];
+  for(let j = 0; j < vNum-1; j++) {
+    let preA = vVec2d[j*4];
+    let preB = vVec2d[j*4+1];
+    let preC = vVec2d[j*4+2];
+    let preD = vVec2d[j*4+3];
+    let pA = vVec2d[j*4+4];
+    let pB = vVec2d[j*4+1+4];
+    let pC = vVec2d[j*4+2+4];
+    let pD = vVec2d[j*4+3+4];
+            
+    if ( !(j == 0 && bFirstLineHolizontal)) {
+    // 放射線状の2つの線
+    tmpLines.push(new CPEdge(new Vec2d(preB), new Vec2d(pB), EDGE_TYPE_VALLEY));            
+    tmpLines.push(new CPEdge(new Vec2d(preC), new Vec2d(pC), EDGE_TYPE_MOUNTAIN));            
+
+    // y軸に対して対称
+    tmpLines.push(new CPEdge(new Vec2d(-preB.x, preB.y), new Vec2d(-pB.x, pB.y), EDGE_TYPE_VALLEY));            
+    tmpLines.push(new CPEdge(new Vec2d(-preC.x, preC.y), new Vec2d(-pC.x, pC.y), EDGE_TYPE_MOUNTAIN));            
+    }
+
+    // 水平線
+    if(bHideHline && j != vNum -2 && Vec2d.Angle(Vec2d.Sub(pLine[j], pLine[j+1]), Vec2d.Sub(pLine[j+1], pLine[j+2])) < Math.PI /180.0 * hideAngleDeg) continue;
+
+    	let type;
+      let rType;
+      if( j == vNum-2) { 
+        type = EDGE_TYPE_BORDER;
+        rType = EDGE_TYPE_BORDER; 
+      } else {
+     		type = bRidgeArray[j] ?  EDGE_TYPE_MOUNTAIN: EDGE_TYPE_VALLEY;
+     		rType = !bRidgeArray[j] ?  EDGE_TYPE_MOUNTAIN: EDGE_TYPE_VALLEY;
+     	}
+
+      tmpLines.push(new CPEdge(new Vec2d(pB.x, pA.y), new Vec2d(-pB.x, pA.y), type));  // 中央を横切る水平線。中央で分断されないように連結          
+     	tmpLines.push(new CPEdge(new Vec2d(pB), new Vec2d(pC), rType));  
+     	tmpLines.push(new CPEdge(new Vec2d(pC), new Vec2d(pD), type));      
+            	
+    	// y軸に対して対称
+     	tmpLines.push(new CPEdge(new Vec2d(-pB.x, pB.y), new Vec2d(-pC.x, pC.y), rType));         
+     	tmpLines.push(new CPEdge(new Vec2d(-pC.x, pC.y), new Vec2d(-pD.x, pD.y), type));     
+  }
+        
+  // 円周方向のコピー
+  for(let i = 0; i < N; i++) {
+    let rotAngle = i * Math.PI * 2 / N;
+            
+    for(let line of tmpLines) {
+      let sp = new Vec2d();
+      let ep = new Vec2d();
+      sp.set(line.sp);
+      ep.set(line.ep);
+
+      sp.rotate(rotAngle);
+      ep.rotate(rotAngle);
+
+      cpEdges.push(new CPEdge(sp, ep, line.type)); 
+    }
+  }
+       
+  // 3Dモデルと整合を取るために折り線のx座標を反転する
+  for( let i = 0; i < cpEdges.length; i++) {
+  	cpEdges[i].sp.x *= -1;
+    cpEdges[i].ep.x *= -1;
+  }
+
+  cpScale(cpEdges, 0.3);
+  cpMinCoordinate = cpGetMinCoordinate(cpEdges);
+  cpMaxCoordinate = cpGetMaxCoordinate(cpEdges);
+
+  // generate 3D model
+  let vIndex = 0;
+  let modelScale = 0.2;
+  let vertices = [];
+  let indices = [];
+  let normals = [];
+  let points_for_line = [];
+
+  // 立体形状構築
+  let vVec = [];
+  let vNumPerLayer = 5;
+        
+  for(let i = 0; i < vNumPerLayer; i++) {
+    vVec.push(new Vec3d(0, 0, pLine[0].y));
+  }
+        
+  for(let i = 0; i < vNum-1; i++) {
+    l[i] = getDistance(pLine[i], pLine[i+1]);
+  }
+        
+  sumLen = 0;
+
+  for(let j = 1; j < vNum; j++) {
+    let pA = new Vec3d();
+    let pB = new Vec3d();
+    let pC = new Vec3d();
+    let pD = new Vec3d();
+            
+    let z = pLine[j].y;
+    let d = pLine[j].x;
+    sumLen += l[j-1];
+
+    h = sumLen;
+    let lenAB = d * Math.sin(Math.PI/N);
+    let lenBC = 0.5*(h*Math.sin(Math.PI/N) - lenAB);
+    let lenBD = lenBC * Math.sin(Math.PI/N);
+    let lenCD = lenBC * Math.cos(Math.PI/N);
+    pA.set(lenAB,  -d* Math.cos(Math.PI/N), z);
+    pB.set(-lenAB, -d* Math.cos(Math.PI/N), z);
+            
+    let vecOB = new Vec2d(-Math.sin(Math.PI/N), -Math.cos(Math.PI/N));
+    pD.set(pB.x + vecOB.x * lenBD, pB.y + vecOB.y * lenBD, z);
+    let vecDC = new Vec2d(-vecOB.y, vecOB.x);
+    pC.set(pD.x + vecDC.x * lenCD, pD.y + vecDC.y * lenCD, z);
+    pD.set(pB.x - lenBC, -d* Math.cos(Math.PI/N), z);
+            
+    vVec.push(pA);
+    vVec.push(pB);
+    vVec.push(pC);
+    vVec.push(pD);
+    vVec.push(pB);
+  }
+  
+  for(let j = 0; j < vNum-1; j++) {
+    let tmpFace = [];
+    for(let i = 0; i < vNumPerLayer - 1; i++) {
+      let v = new Array(4);
+                
+      v[0] = new Vec3d(vVec[j*vNumPerLayer+i]);
+      v[1] = new Vec3d(vVec[j*vNumPerLayer+i+vNumPerLayer]);
+      v[2] = new Vec3d(vVec[j*vNumPerLayer+i+1+vNumPerLayer]);
+      v[3] = new Vec3d(vVec[j*vNumPerLayer+i+1]);
+                
+      tmpFace.push(v);
+    }
+
+    // 描画するエッジ
+    let edges = [[0,1], [2,3]]; // 左右
+
+    if( j != 0 ) {
+      let bHideH = (bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j], pLine[j+1])) < Math.PI /180.0 * hideAngleDeg);
+      if(!bHideH) {
+        edges.push([3,0]);
+      }
+    }
+
+    if(j == pLine.length -2) {
+      edges.push([1,2]); // 下端
+    }  
+        
+    for(let vs of tmpFace) {
+      for(let i = 0; i < N; i++) {
+        let angle = 2 * Math.PI / N * i;
+        let fv = new Array(4);
+
+        for(let k = 0; k < 4; k++) {
+          fv[k] = new Vec3d();
+          // 回転させる
+          fv[k].z = vs[k].z - centerY;
+          fv[k].x = vs[k].x * Math.cos(angle) - vs[k].y * Math.sin(angle);
+          fv[k].y = vs[k].x * Math.sin(angle) + vs[k].y * Math.cos(angle);
+          fv[k].scale(modelScale);
+          vertices.push(fv[k].x,  -fv[k].z, fv[k].y );
+        }                    
+        let nomalVec = Vec3d.Cross(Vec3d.Sub(fv[2], fv[1]), Vec3d.Sub(fv[3], fv[1]));
+        for(let k = 0; k < 4; k++)
+          normals.push(nomalVec.x,  -nomalVec.z, nomalVec.y );
+
+        for (let e of edges ) {
+            let si = e[0];
+            let ei = e[1];
+            points_for_line.push( new THREE.Vector3(fv[si].x,  -fv[si].z, fv[si].y));
+            points_for_line.push( new THREE.Vector3(fv[ei].x,  -fv[ei].z, fv[ei].y));
+        }      
+
+        indices.push( vIndex, vIndex + 1, vIndex + 2 );
+        indices.push( vIndex, vIndex + 2, vIndex + 3 );
+        vIndex += 4;
+      }
+    }    
+  }
+
+  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));       
+
+  geometry.setIndex( indices );
+  geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+  geometry.setAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
+  group.add(new THREE.Mesh(geometry, material));    
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function buildModel() {
+  if(group != null) { scene.remove(group); }
+	group = new THREE.Group();
+	scene.add(group);
+
+  if (pLine.length < 2) return;
+
+  switch(modelType) {
+    case MODEL_TYPE_FLAP_CYLINDER:  buildModel_Cylindrical_Flap(); break; 
+    case MODEL_TYPE_PRISM_CYLINDER:  buildModel_Cylindrical_Prism(); break; 
+    case MODEL_TYPE_FLAP_DISK:  buildModel_Disk_Flap(); break; 
+    case MODEL_TYPE_PRISM_DISK:  buildModel_Disk_Prism(); break; 
+  }
+
+  group.rotation.y = rotateY;
+  group.rotation.x = rotateX;
+}
+
+function onWindowResize3d() {
+  //  console.log(container.getBoundingClientRect());
+  //  console.log(container.size);
+
+  // 自分で計算する
+  let w = window.innerWidth / 2.8;
+  let h = (window.innerHeight - 50)*3/5 - 10;
+
+  camera.aspect = w/h;
+	camera.updateProjectionMatrix();
+//		renderer.setSize(window.innerWidth/3, window.innerHeight/2);
+	renderer.setSize(w,h);
+   render();
+
+//		renderer.setSize(container.getBoundingClientRect().width, container.getBoundingClientRect().height);
+    
+}
+
+function onModelViewMouseDown(e) {
+  let rect = container.getBoundingClientRect();
+  modelScreen_mouseButton = e.which;
+  if (modelScreen_mouseButton == 1 || modelScreen_mouseButton == 3) {
+    modelScreen_preMouseX = e.clientX - rect.left;
+    modelScreen_preMouseY = e.clientY - rect.top;
+  }
+}
+
+function onModelViewMouseMove(e) {
+    if (modelScreen_mouseButton == 1 || modelScreen_mouseButton == 3) {
+      let rect = container.getBoundingClientRect();
+      let px = e.clientX - rect.left;
+      let py = e.clientY - rect.top;
+
+      rotateY += (px - modelScreen_preMouseX) * 0.01;
+      rotateX += (py - modelScreen_preMouseY) * 0.01;
+      group.rotation.y = rotateY;
+      group.rotation.x = rotateX;
+
+      render();
+      modelScreen_preMouseX = px;
+      modelScreen_preMouseY = py;
+    }
+  }
+
+function onModelViewMouseUp(e) {
+  modelScreen_mouseButton = -1;
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+function update3DModel() {
+	buildModel();
+	render();
+}
+
+function onModelViewMouseWheel(e) {
+ 	let delta = e.deltaY ? -(e.deltaY) : e.wheelDelta ? e.wheelDelta : -(e.detail);  
+  camera.position.z += delta / 10;
+  render();
+  e.preventDefault();
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Crease Pattern Canvas
+///////////////////////////////////////////////////////////////////////////
+
+// event
+let wrapper3 = document.getElementById("wrapper3");
+const cpCanvas = document.getElementById("canvas2");
+cpCanvas.width = wrapper3.getBoundingClientRect().width;
+cpCanvas.height = wrapper3.getBoundingClientRect().height;
+cpCanvas.addEventListener('mousedown',  cpCanvas_onMouseDown, false);
+cpCanvas.addEventListener('mouseup',  cpCanvas_onMouseUp, false);
+cpCanvas.addEventListener('mousemove',  cpCanvas_onMouseMove,  false);
+cpCanvas.addEventListener('wheel', cpCanvas_onMouseWheel, false);
+
+let cpCanvas_preMouseX;
+let cpCanvas_preMouseY;
+let cpCanvas_pressedMouseX;
+let cpCanvas_pressedMouseY;
+let cpCanvas_pressedMouseButton;
+
+let cpCanvas_scale = 1;
+let cpCanvas_transVec = new Vec2d(0, 0);
+
+// start
+cpCanvas_draw();
+
+function windowResizedCP() {
+  console.log("resize cp");
+  cpCanvas.width = wrapper3.getBoundingClientRect().width;
+  cpCanvas.height = wrapper3.getBoundingClientRect().height;
+  cpCanvas_draw();
+}
+
+function cpCanvas_draw() {
+  let ctx = cpCanvas.getContext('2d');
+  let rect = cpCanvas.getBoundingClientRect();
+
+  // clear
+ 	ctx.fillStyle = 'rgb(255, 255, 255)';
+	ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillRect(0, 0, cpCanvas.width, cpCanvas.height);
+
+  // set view
+	ctx.translate( cpCanvas.width/2, cpCanvas.height/2);
+	ctx.scale(cpCanvas_scale, cpCanvas_scale);
+	ctx.translate(cpCanvas_transVec.x, cpCanvas_transVec.y);
+
+  ctx.strokeStyle = COLOR_PLINE;
+  ctx.fillStyle = COLOR_POINT;
+
+  let cpCenter_x = (cpMinCoordinate.x + cpMaxCoordinate.x)/2; 
+  let cpCenter_y = (cpMinCoordinate.y + cpMaxCoordinate.y)/2; 
+	ctx.translate(-cpCenter_x, -cpCenter_y);
+  
+  if (bDrawGlueArea && (modelType == MODEL_TYPE_FLAP_CYLINDER || modelType == MODEL_TYPE_PRISM_CYLINDER)) {
+    ctx.fillStyle = COLOR_GLUE_AREA;
+	  ctx.beginPath();
+    ctx.rect(GlueArea.x, GlueArea.y, GlueArea.w, GlueArea.h);
+    ctx.fill();
+  } 
+
+  for (let i = 0; i < cpEdges.length; i++) {
+    switch(cpEdges[i].type) {
+      case EDGE_TYPE_BORDER:   ctx.strokeStyle = 'rgb(0,0,0)'; break;
+      case EDGE_TYPE_MOUNTAIN: ctx.strokeStyle = 'rgb(255,0,0)'; break;
+      case EDGE_TYPE_VALLEY:   ctx.strokeStyle = 'rgb(0,0,255)'; break;
+    }
+	  ctx.beginPath();
+    ctx.moveTo(cpEdges[i].sp.x, cpEdges[i].sp.y)
+    ctx.lineTo(cpEdges[i].ep.x, cpEdges[i].ep.y)
+		ctx.stroke();
+  }
+}
+
+function cpCanvas_onMouseDown(e) {
+  let rect = cpCanvas.getBoundingClientRect();
+  let mouseX = e.clientX - rect.left;
+  let mouseY = e.clientY - rect.top;
+  cpCanvas_preMouseX = mouseX;
+  cpCanvas_preMouseY = mouseY;
+  cpCanvas_pressedMouseX = cpCanvas_preMouseX;
+  cpCanvas_pressedMouseY = cpCanvas_preMouseY;
+  cpCanvas_pressedMouseButton = e.which;
+  e.preventDefault();
+}
+
+function cpCanvas_onMouseMove(e) {
+  let rect = cpCanvas.getBoundingClientRect();
+  let mouseX = e.clientX - rect.left;
+  let mouseY = e.clientY - rect.top;
+
+	if( cpCanvas_pressedMouseButton == 1 || cpCanvas_pressedMouseButton == 3) { // left or right
+    cpCanvas_transVec.x += (mouseX - cpCanvas_preMouseX);
+    cpCanvas_transVec.y += (mouseY - cpCanvas_preMouseY);
+		
+		cpCanvas_preMouseX = mouseX;
+		cpCanvas_preMouseY = mouseY;
+    cpCanvas_draw();
+  }
+  e.preventDefault();
+}
+
+function cpCanvas_onMouseUp(e) {
+  cpCanvas_pressedMouseButton = -1;
+}
+
+function cpCanvas_onMouseWheel(e) {
+	let delta = e.deltaY ? -(e.deltaY) : e.wheelDelta ? e.wheelDelta : -(e.detail);
+	cpCanvas_scale += 0.1 * ((delta < 0) ? -1: 1);
+	if(cpCanvas_scale <= 0) { cpCanvas_scale = 0.1; }
+  cpCanvas_draw();
+  e.preventDefault();
+}
+
+////////////////////////////////
+function exportOrirevo() {
+  const orirevo_data = {};
+  orirevo_data.application = 'orirevo';
+  orirevo_data.version = 1;
+  orirevo_data.vnum = pLine.length;
+  orirevo_data.modelDivNum = modelDivNum;
+  orirevo_data.flapSize = flapSize;
+  orirevo_data.modelType = modelType;
+
+  var xy = "";
+  for (let i = 0; i < pLine.length; i++) {
+    xy += pLine[i].x + "," + pLine[i].y + ",";
+  }
+  orirevo_data.xy = xy;
+
+  return JSON.stringify(orirevo_data);
+}
+
+function export_data() {
+  if (document.getElementById("ck_Animation").checked) {
+      document.getElementById("ck_Animation").checked = false;
+      stopAnimation();
+  }
+
+  if (pLine.length < 2) {
+    document.getElementById("export_data_type").value = "-1";
+    return;
+  }
+  
+  let ext = document.getElementById("export_data_type").value;
+  
+  let content = "";
+  let filename = "ori-revo." + ext;
+  switch(ext) {
+    case 'dxf': 
+      content = exportDXF(cpEdges);
+      break;
+    case 'svg': 
+      content = exportSVG(cpEdges);
+      break;
+    case 'obj':
+      content = exportOBJ();
+      break;
+    case 'orirevo':
+      content = exportOrirevo();
+      break;
+    default:
+      return;
+  }
+
+  let blob = new Blob([ content ], { "type" : "text/plain" });
+
+  const url = URL.createObjectURL(blob); 
+  const a = document.createElement("a");
+  document.body.appendChild(a);
+  a.download = filename;
+  a.href = url;
+  a.click();
+  a.remove();
+  console.log(url);
+  window.URL.revokeObjectURL(url);
+  document.getElementById("export_data_type").value = "-1";
+}
+
+function exportOBJ() {
+  let arr = geometry.getAttribute('position').array;
+  let len = arr.length;
+  let output = "";
+
+  for( let i = 0; i < len; i+=3) {
+    output += 'v ' + arr[i] + ' ' + arr[i+1] + ' ' + arr[i+2] + '\n';
+  }
+
+  let vIndex = 1;
+  for (let i = 0; i < len / 3 / 4; i++) {
+    output += "f " + vIndex + " " + (vIndex + 1) + " " + (vIndex + 2) + "\n";
+    output += "f " + vIndex + " " + (vIndex + 2) + " " + (vIndex + 3) + "\n";
+    vIndex += 4;
+  }  
+
+  return output;
+}
+
+function exportDXF(edges) {
+  let scale = 1;
+  let txt = `  0
+SECTION
+  2
+HEADER
+  9
+$ACADVER
+  1
+AC1009
+  0
+ENDSEC
+  0
+SECTION
+  2
+ENTITIES
+`;
+
+  for (let i = 0; i < edges.length; i++) {
+    txt += 
+`  0
+LINE
+  8
+`;
+    let layer_name = "";
+    let color_name = "";
+    switch(edges[i].type) {
+      case EDGE_TYPE_BORDER: layer_name = "CutLine"; color_name = "250"; break;
+      case EDGE_TYPE_MOUNTAIN: layer_name = "MountainLine";  color_name = "1";break;
+      case EDGE_TYPE_VALLEY: layer_name = "ValleyLine";  color_name = "5"; break;
+    }
+    txt += layer_name;
+    txt += `
+  6
+CONTINUOUS
+  62
+`;
+    txt += color_name + "\n";
+    txt += "  10\n";
+    txt += edges[i].sp.x * scale + "\n";
+    txt += "  20\n";
+    txt += (-edges[i].sp.y * scale) + "\n";
+    txt += "  11\n";
+    txt += edges[i].ep.x * scale + "\n";
+    txt += "  21\n";
+    txt += (-edges[i].ep.y * scale) + "\n";
+  }
+  txt += 
+`  0
+ENDSEC
+  0
+EOF
+`;
+  return txt;
+}
+
+function exportSVG(edges) {
+  let scale = 2;
+  let w = (cpMaxCoordinate.x - cpMinCoordinate.x) * scale;
+  let h = (cpMaxCoordinate.y - cpMinCoordinate.y) * scale;
+
+  let txt = 
+`<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+xmlns="http://www.w3.org/2000/svg"
+xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+width="${w}"
+height="${h}"
+viewBox="${cpMinCoordinate.x * scale} ${cpMinCoordinate.y * scale} ${w} ${h}"
+version="1.1"
+id="svg1"
+>
+<g inkscape:groupmode="layer" id="Lines" inkscape:label="Lines">
+`;
+
+  for(let i = 0; i < edges.length; i++) {
+    let sx = edges[i].sp.x * scale;
+    let sy = edges[i].sp.y * scale;
+    let ex = edges[i].ep.x * scale;
+    let ey = edges[i].ep.y * scale;
+
+    let col = "";
+    switch(edges[i].type) {
+      case EDGE_TYPE_BORDER: col = "0, 0, 0"; break;
+      case EDGE_TYPE_MOUNTAIN: col = "255, 0, 0";break;
+      case EDGE_TYPE_VALLEY: col = "0, 0, 255"; break;
+    }
+
+    txt += `<path 
+style="stroke:rgb(${col});stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" 
+fill="none" 
+id="path${i}" 
+d="M ${sx} ${sy} L ${ex} ${ey} "/>
+`;
+  }
+
+  txt += `</g></svg>`;
+
+  return txt;
+}
+
+class Rod {
+	length;
+	dAngle; // 単位時間当たりの角度の変化
+	angle; // 現在の角度 // 1つまえのロッドとの成す角
+	sp; // 参照
+	ep; // 参照
+	
+	originalPositionSp;	
+	dv; // 最初の点のみに関係する 移動量  
+
+  constructor() { }
+}
+
+function morph(ratio) {
+  ratio = Math.max(ratio, 0);
+  ratio = Math.min(ratio, 1);
+  let bCylindrical = (modelType == MODEL_TYPE_FLAP_CYLINDER || modelType == MODEL_TYPE_PRISM_CYLINDER);    
+      
+  let sy = pLine[0].y;
+  let ey = pLine[pLine.length - 1].y;
+
+  // y 軸方向の中央をゼロにあわせる
+  let min_y = sy;
+  let max_y = sy;
+
+  for (let v of pLine) {
+    max_y = Math.max(max_y, v.y);
+    min_y = Math.min(min_y, v.y);
+  }
+       
+  let centerY = (min_y + max_y) / 2;
+  for (let v of pLine) {
+    v.y -= centerY;
+  }
+        
+  if(sy > ey) {
+    //並びを反転する
+    pLine.reverse();
+  }
+       
+  let rods = [];
+  let STEP_NUM = 1;
+
+  // rod構築
+  let total_rod_length = 0;
+  let max_x = 0;
+  
+  for (let i = 0; i < pLine.length - 1; i++) {
+    let rod = new Rod();
+    rods.push(rod);
+    let p0 = pLine[i];
+    let p1 = pLine[i+1];
+    rod.sp = p0;
+    rod.ep = p1;
+    rod.originalPositionSp = new Vec2d(p0);
+    let vec_p0_p1 = new Vec2d(p1.x - p0.x, p1.y - p0.y);
+    
+    max_x = Math.max(max_x,  Math.abs(p0.x));
+    max_x = Math.max(max_x,  Math.abs(p1.x));
+ 
+    let goalAngle;
+    if(i == 0) { 
+      goalAngle = bCylindrical ? Math.PI / 2 : 0; 
+    } else { 
+      let pre_p = pLine[i-1];
+      let vec_pre_p0 = new Vec2d(p0.x - pre_p.x, p0.y - pre_p.y);
+      goalAngle = Math.atan2(vec_pre_p0.y, vec_pre_p0.x); // goal angle
+    }
+ 
+    rod.length = vec_p0_p1.length();
+    total_rod_length += rod.length;
+    let thisAngle = Math.atan2(vec_p0_p1.y, vec_p0_p1.x);
+           
+    // 角度による場合分け
+    let diffAngle;
+    if(Math.abs(goalAngle - thisAngle) < Math.PI) { 
+      diffAngle = goalAngle - thisAngle; 
+    } else if(thisAngle - goalAngle > Math.PI) { 
+      diffAngle = goalAngle + 2*Math.PI - thisAngle; 
+    } else { 
+      diffAngle = goalAngle - 2*Math.PI - thisAngle; 
+    }
+           
+    if(i == 0 ){
+      rod.angle = Math.atan2(vec_p0_p1.y, vec_p0_p1.x);
+      rod.dAngle = diffAngle / STEP_NUM;
+    } else {
+      rod.angle = diffAngle;
+      rod.dAngle = -diffAngle / STEP_NUM;        	
+    }
+  }
+         
+  rods[0].dv = bCylindrical ? new Vec2d((max_x - rods[0].sp.x) / STEP_NUM, (-total_rod_length / 2 - rods[0].sp.y) / STEP_NUM): new Vec2d();
+       
+  let morphMaxX = max_x;
+
+
+  // それぞれの長さ、目標角度が定まったので、それに従って、頂点位置を更新する
+  max_x = 0;
+  min_y = max_y = rods[0].originalPositionSp.y;  	
+  for(let i = 0; i < rods.length; i++) {
+    let rod = rods[i];
+        	
+    // 角度の更新 
+    let angle = rod.angle + ratio * rod.dAngle;
+        	
+    if(i == 0) {
+    	rod.sp.x = rod.originalPositionSp.x + ratio * rod.dv.x;
+    	rod.sp.y = rod.originalPositionSp.y + ratio * rod.dv.y;
+    	rod.ep.x = rod.sp.x + rod.length * Math.cos(angle);
+    	rod.ep.y = rod.sp.y + rod.length * Math.sin(angle);
+        		
+    	max_x = Math.max(max_x, rod.ep.x);
+    	max_y = Math.max(max_y, rod.ep.y);
+    	max_y = Math.max(max_y, rod.sp.y);
+    	min_y = Math.min(min_y, rod.ep.y);
+    	min_y = Math.min(min_y, rod.sp.y);
+    	continue;
+    }
+        	
+    // 先の頂点の位置を、根元の頂点の位置、1つ前のロッドの角度、現在のロッドの長さ、角度で更新
+    let preRod = rods[i - 1];
+    
+    // 1つ前のロッドの絶対角度
+    let preRodAngle = Math.atan2(preRod.ep.y - preRod.sp.y, preRod.ep.x - preRod.sp.x);
+    
+    // 更新後の現在のロッドの絶対角度
+    let ang = -angle + preRodAngle;
+    rod.ep.x = rod.sp.x + rod.length * Math.cos(ang);
+    rod.ep.y = rod.sp.y + rod.length * Math.sin(ang);
+    max_x = Math.max(max_x, rod.ep.x);
+    max_y = Math.max(max_y, rod.ep.y);
+    min_y = Math.min(min_y, rod.ep.y);
+  }        	
+        
+  // もしも max_x がmorphMaxXを超えてしまっていたら、紙が大きくなるということなので、超えないように元に戻す
+  if(morphMaxX < max_x && bCylindrical) {
+    let diff = max_x - morphMaxX;
+    for(let v of pLine) {
+      v.x -= diff;
+    }
+  }
+        
+  centerY = (min_y + max_y) / 2;
+  for(let v of pLine) {
+ 		v.y -= centerY;
+ 	}
+}
