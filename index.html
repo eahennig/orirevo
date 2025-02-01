@@ -133,16 +133,16 @@
       <div class="menu">
           <div class="custom-control custom-switch">
             <input type="checkbox" class="custom-control-input" id="ck_grid" checked/>
-            <label class="custom-control-label" for="ck_grid">Show Grid & Snap to Grid</label>
+            <label class="custom-control-label" for="ck_grid">Show grid & snap to grid</label>
           </div>
-          <label>&nbsp;&nbsp;&nbsp;Grid Interval</label>
+          <label>&nbsp;&nbsp;&nbsp;Grid interval</label>
           <input class="btn btn-primary btn-sm" type="button" value="x 1/2" id="grid_inc" />
           <input class="btn btn-primary btn-sm" type="button" value="x 2" id="grid_dec" /><br><br>
 
           <div class="form-group">
             <table>
               <tr>
-                <td width="50%"><label for="divNum">Division Number&nbsp;&nbsp;&nbsp;</label></td>
+                <td width="50%"><label for="divNum">Divisions &nbsp;&nbsp;&nbsp;</label></td>
                 <td>
                   <select class="custom-select custom-select-sm" id="divNum">
                     <option value="3">3</option>
@@ -168,7 +168,7 @@
           </div>
 
           <div class="form-group">
-            <label id="modelTypeName">Model Type</label><br>
+            <label id="modelTypeName">Model type</label><br>
 
             <input type="radio" name="modelType" value="0" id="type_flap_cylinder" checked ><label for="type_flap_cylinder"></label>
             <input type="radio" name="modelType" value="1" id="type_prism_cylinder"><label for="type_prism_cylinder"></label>
@@ -215,9 +215,14 @@
             }
           </style>
           <div id="div_flapsize">
-            <label for="flapSizeRange">Flap Size</label>
+            <label for="flapSizeRange">Flap size</label>
             <input id="flapSizeRange" type="range" min="1" max="400" step="1" value="20"/>
             <span id="FlapSize">20</span><br><br>
+          </div>
+          <div id="div_hole">
+            <label for="holeRadiusRange">Hole radius</label>
+            <input id="holeRadiusRange" type="range" min="0" max="100" step="1" value="0"/>
+            <span id="Hole">0</span><br><br>
           </div>
           <div id="div_glueArea">
             <div class="custom-control custom-switch">
@@ -230,7 +235,7 @@
             <label class="custom-control-label" for="ck_hideHline">Hide almost flat edges</label>
           </div>
           <div id="div_hide_angle">
-            <label for="hideAngleRange">&nbsp;&nbsp;&nbsp;Hide Angle (deg.)</label>
+            <label for="hideAngleRange">&nbsp;&nbsp;&nbsp;Hide angle (deg.)</label>
             <input id="hideAngleRange" type="range" min="1" max="90" step="1" value="25"/>
             <span id="HideAngle">25</span><br><br>
           </div>
@@ -240,10 +245,10 @@
           <table width="100%"><tr><td width="50%">
           <div class="form-group">
             <select class="custom-select" id="export_data_type">
-              <option value="-1" selected>= Export Data =</option>
-              <option value="dxf">Crease Pattern (.dxf)</option>
-              <option value="svg">Crease Pattern (.svg)</option>
-              <option value="obj">3D Model (.obj)</option>
+              <option value="-1" selected>= Export data =</option>
+              <option value="dxf">Crease pattern (.dxf)</option>
+              <option value="svg">Crease pattern (.svg)</option>
+              <option value="obj">3D model (.obj)</option>
               <option value="orirevo">ORI-REVO data (.orirevo)</option>
             </select>
           </div>
@@ -251,29 +256,29 @@
 
           <div class="form-group">
             <select class="custom-select" id="load_example">
-              <option value="-1" selected>= Load Example Data =</option>
-              <option value="sphere8">Sphere with 8 Flaps</option>
-              <option value="sphere16">Sphere with 16 Flaps</option>
-              <option value="egg">Wrapped Egg</option>
-              <option value="wrapped_sphere">Wrapped Sphere</option>
-              <option value="twisted_tower">Twisted Tower</option>
+              <option value="-1" selected>= Load example data =</option>
+              <option value="sphere8">Sphere with 8 flaps</option>
+              <option value="sphere16">Sphere with 16 flaps</option>
+              <option value="egg">Wrapped egg</option>
+              <option value="wrapped_sphere">Wrapped sphere</option>
+              <option value="twisted_tower">Twisted tower</option>
               <option value="bell">Bell</option>
-              <option value="gift_box">Gift Box</option>
-              <option value="stacked_3_boxes">Stacked Three Boxes</option>
-              <option value="whipped_cream">Whipped Cream</option>
+              <option value="gift_box">Gift box</option>
+              <option value="stacked_3_boxes">Stacked three boxes</option>
+              <option value="whipped_cream">Whipped cream</option>
             </select>
           </div>
         </td>
         </tr></table>
           <div class="custom-file">
             <input type="file" class="custom-file-input" id="orirevo_file"/>
-            <label class="custom-file-label" for="orirevo_file">= Load .orirevo File =</label>
+            <label class="custom-file-label" for="orirevo_file">= Load .orirevo file =</label>
           </div>
           <br>
           <br>
           <div class="custom-control custom-switch">
             <input type="checkbox" class="custom-control-input" id="ck_Animation" />
-            <label class="custom-control-label" for="ck_Animation">Fold-Unfold Animation</label>
+            <label class="custom-control-label" for="ck_Animation">Fold-unfold animation</label>
           </div>
           <br>
 

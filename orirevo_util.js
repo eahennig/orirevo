@@ -41,7 +41,22 @@ class Vec2d {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
-
+  normalize() {
+    let l = this.length();
+    this.x /= l;
+    this.y /= l;
+  }
+	
+	add(v) {
+		this.x += v.x;
+		this.y += v.y;
+	}
+	
+	sub(v) {
+		this.x -= v.x;
+		this.y -= v.y;
+	}
+	
   static Cross(u, v) {
     return u.x * v.y - u.y * v.x;
   }

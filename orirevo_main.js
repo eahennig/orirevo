@@ -20,6 +20,7 @@ const MODEL_TYPE_PRISM_DISK = 3;
 let modelType = MODEL_TYPE_FLAP_CYLINDER;
 
 let flapSize = 20;
+let holeRadius = 0;
 let bHideHline = true;
 let bDrawGlueArea = false;
 let GlueArea = {};
@@ -36,6 +37,8 @@ document.body.onresize = function() { windowResized(); }
 document.getElementById("divNum").onchange = function() { divNumChange(document.getElementById("divNum").value);}
 document.getElementById("flapSizeRange").onchange = function() { flapSizeChange(document.getElementById("flapSizeRange").value);}
 document.getElementById("flapSizeRange").oninput = function() { flapSizeChange(document.getElementById("flapSizeRange").value);}
+document.getElementById("holeRadiusRange").onchange = function() { holeRadiusChange(document.getElementById("holeRadiusRange").value);}
+document.getElementById("holeRadiusRange").oninput = function() { holeRadiusChange(document.getElementById("holeRadiusRange").value);}
 document.getElementById("hideAngleRange").onchange = function() { hideAngleChange(document.getElementById("hideAngleRange").value);}
 document.getElementById("hideAngleRange").oninput = function() { hideAngleChange(document.getElementById("hideAngleRange").value);}
 document.getElementById("faceOpacityRange").onchange = function() { faceOpacityChange(document.getElementById("faceOpacityRange").value);}
@@ -67,7 +70,7 @@ function file_loaded(txt) {
     return;
   }
 
-  if (Number(data.version) > '1') {
+  if (Number(data.version) > '1.1') {
     console.log("cannot read this version:" + data.version);
     return;
   }
@@ -76,10 +79,12 @@ function file_loaded(txt) {
 
   flapSize = Number(data.flapSize);
   modelDivNum = Number(data.modelDivNum);
+	//holeRadius = Number(data.holeRadius);
 
   document.getElementById("divNum").value = modelDivNum;
   document.getElementById("flapSizeRange").value = flapSize;
   document.getElementById("FlapSize").innerText = flapSize;
+	//document.getElementById("Hole").innerText = holeRadius;
 
   modelType = Number(data.modelType);
   let elements = document.getElementsByName('modelType');
@@ -195,6 +200,14 @@ function divNumChange(i) {
 function flapSizeChange(i) {
   flapSize = Number(i);
   document.getElementById("FlapSize").innerText = i;
+  buildModel();
+  render();
+  cpCanvas_draw();
+}
+
+function holeRadiusChange(i) {
+  holeRadius = Number(i);
+  document.getElementById("Hole").innerText = i;
   buildModel();
   render();
   cpCanvas_draw();
@@ -381,6 +394,11 @@ function modelTypeChange(type) {
   }
   pLineChanged = true;    
   mainCanvas_draw();
+	if(type == MODEL_TYPE_FLAP_CYLINDER) {
+    document.getElementById('div_hole').style.visibility ="visible";
+	} else {
+		document.getElementById('div_hole').style.visibility ="hidden";
+	}
   if(type == MODEL_TYPE_PRISM_DISK || type == MODEL_TYPE_FLAP_DISK) {
     document.getElementById('div_flapsize').style.visibility ="hidden";
     document.getElementById('div_glueArea').style.visibility ="hidden";
@@ -779,7 +797,7 @@ function modelScreen_init() {
    	side: THREE.DoubleSide,                                 
    	color: 0xffffff, 
    	specular:0xffffff,
- 		shininess:0,
+		shininess:0,
 		opacity:1.0,
 		transparent:true
  	});
@@ -1049,6 +1067,170 @@ function buildModel_Cylindrical_Flap() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+function buildModel_Cylindrical_Flap_With_Hole() {
+	geometry = new THREE.BufferGeometry();
+	let N = modelDivNum;
+	let b = flapSize;
+	let nPoints = pLine.length;
+	let u = new Array(nPoints);
+	let v = new Array(nPoints);
+	let x = new Array(nPoints);
+	let f = new Array(nPoints);
+	cpEdges = [];
+	
+	// Half-angle of polygon gore
+	let alpha2 = Math.PI/N;
+	let sinalpha2 = Math.sin(alpha2);
+	let cosalpha2 = Math.cos(alpha2);
+	
+	// Angle of polygon gore
+	let alpha = 2*alpha2;
+	let sinalpha = Math.sin(alpha);
+	let cosalpha = Math.cos(alpha);
+	
+	// Find minimum and maximum x values of rotated curve
+	let rmin = pLine[0].x;
+	let rmax = rmin;
+	for (let i = 1; i < nPoints; i++) {
+		let x = pLine[i].x;
+		rmin = Math.min(rmin, x);
+		rmax = Math.max(rmax, x);
+	}
+	
+	// console.log("rmin: ", rmin, " rmax: ", rmax);
+			
+	// Calculate maximum radius of surface of revolution
+	let rc = Math.max(Math.abs(rmin), Math.abs(rmax));
+	let ri = 0.01*holeRadius*rc;
+	let ro = Math.sqrt(rc*rc + ri*ri);
+	
+	// console.log("hole: ", holeRadius, "rc:", rc, "ri:", ri, "ro:", ro);
+	
+	// Calculate crease line coordinates
+	u[0] = 0;
+	for (let i = 1; i < nPoints; i++) {
+		let dx = (rc*cosalpha2 - ri*sinalpha2)/ro * (pLine[i].x - pLine[i-1].x);
+		let dz = pLine[i].y - pLine[i-1].y;
+		u[i] = u[i-1] + Math.sqrt(dx*dx + dz*dz);
+	}
+	
+	for (let i = 0; i < nPoints; i++) {
+		let px = pLine[i].x;
+		v[i] = (ri*cosalpha2*(px - rc) + sinalpha2*(px*rc + ri*ri))/ro;
+		x[i] = (cosalpha2*(px*rc + ri*ri) - ri*sinalpha2*(px - rc))/ro;
+	}
+	
+	// console.log("u:", u, "v:", v, "x:", x);
+	
+	let pA = new Vec2d(ro*cosalpha2, -ro*sinalpha2);
+	let pB = new Vec2d(ro*cosalpha2, ro*sinalpha2);
+	
+	let singamma = ri/ro;
+	let cosgamma = Math.sqrt(1 - singamma*singamma);
+	let sinbeta = sinalpha2*cosgamma - cosalpha2*singamma;
+	let cosbeta = cosalpha2*cosgamma + sinalpha2*singamma;
+	
+	let pC = new Vec2d(-ri*sinbeta - rc*cosbeta, -ri*cosbeta + rc*sinbeta);
+	let pD = new Vec2d(cosalpha*pC.x - sinalpha*pC.y, sinalpha*pC.x + cosalpha*pC.y);
+	let CD = new Vec2d(pD);
+	CD.sub(pC);
+	CD.normalize();
+	let BA = new Vec2d(pA);
+	BA.sub(pB);
+	BA.normalize();
+	let pE = new Vec2d(CD);
+	pE.scale(b);
+	pE.add(pD);
+	let pF = new Vec2d(BA);
+	pF.scale(b);
+	pF.add(pA);
+	let EF = new Vec2d(pF);
+	EF.sub(pE);
+	EF.normalize();
+
+	let a2 = new Vec2d(CD);
+	let a1 = new Vec2d(BA);
+	a1.scale(-1);
+	let rhs = new Vec2d(pA);
+	rhs.sub(pD);
+	let detA = a1.x*a2.y - a1.y*a2.x;
+	if (detA == 0) {
+		console.log("Zero determinant");
+		return undefined;
+	}
+	let detA1 = rhs.x*a2.y - rhs.y*a1.x;
+	let lambda = detA1/detA;	
+	let pP = new Vec2d(BA);
+	pP.scale(lambda);
+	pP.add(pA);
+	
+	// Calculate flap crease lines
+	for (let i = 0; i < nPoints; i++) {
+		f[i] = v[i] - flapEdgeDistance(x[i], v[i], pE, pP, EF);
+	}
+		
+	// console.log("f: ", f);	
+		
+	let a = 2*ro*sinalpha2;
+	let w = a + 2*b;
+	let glue = bDrawGlueArea? 0.2*(1 + 0.01*flapSize)*a : 0;
+	
+	// console.log("a:", a, "b:", b, "w:", w);
+	
+	// Assemble crease pattern
+	for (let k = 0; k < N; k++) {
+		for (let i = 0; i < nPoints-1; i++) {
+			cpEdges.push(new CPEdge(new Vec2d(v[i] + k*w, u[i]), new Vec2d(v[i+1] + k*w, u[i+1]), EDGE_TYPE_VALLEY));
+			cpEdges.push(new CPEdge(new Vec2d(f[i] + k*w, u[i]), new Vec2d(f[i+1] + k*w, u[i+1]), k == 0? EDGE_TYPE_BORDER : EDGE_TYPE_MOUNTAIN));
+		}
+	}
+	for (let i = 0; i < nPoints-1; i++) {
+		cpEdges.push(new CPEdge(new Vec2d(f[i] + N*w, u[i]), new Vec2d(f[i+1] + N*w, u[i+1]), bDrawGlueArea? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_BORDER));
+	}
+	if (bDrawGlueArea) {
+		for (let i = 0; i < nPoints-1; i++) {
+			cpEdges.push(new CPEdge(new Vec2d(f[i] + N*w + glue, u[i]), new Vec2d(f[i+1] + N*w + glue, u[i+1]), EDGE_TYPE_BORDER));
+		}
+	}
+	cpEdges.push(new CPEdge(new Vec2d(f[0], u[0]), new Vec2d(f[0] + N*w + glue, u[0]), EDGE_TYPE_BORDER));
+	cpEdges.push(new CPEdge(new Vec2d(f[nPoints-1], u[nPoints-1]), new Vec2d(f[nPoints-1] + N*w + glue, u[nPoints-1]), EDGE_TYPE_BORDER));
+
+	cpScale(cpEdges, 0.3);
+	
+	cpMinCoordinate = cpGetMinCoordinate(cpEdges);
+  cpMaxCoordinate = cpGetMaxCoordinate(cpEdges);
+
+	console.log("cpmin:", cpMinCoordinate, "cpmax:", cpMaxCoordinate);
+}
+
+function flapEdgeDistance(x, v, pE, pP, EF) {
+	let pXV = new Vec2d(x, v);
+	let a1 = new Vec2d(EF);
+	let a2 = new Vec2d(pP);
+	a2.sub(pXV);
+	let rhs = new Vec2d(pXV);
+	rhs.sub(pE);
+	let detA = a1.x*a2.y - a1.y*a2.x;
+	if (detA == 0) return undefined;
+	let detA1 = rhs.x*a2.y - rhs.y*a1.x;
+	let lambda = detA1/detA;
+	
+	// Calculate ponEF = pE + lambda*EF:
+	let ponEF = new Vec2d(EF);
+	ponEF.scale(lambda);
+	ponEF.add(pE);
+	
+	let XVonEF = new Vec2d(ponEF)
+	XVonEF.sub(pXV);
+	let distance = XVonEF.length();
+	if (Math.abs(distance) > 10000) {
+			console.log(distance);
+	}
+	return distance;
+}
+
 
 function buildModel_Cylindrical_Prism() {
   let vNum = pLine.length;
@@ -1842,7 +2024,13 @@ function buildModel() {
   if (pLine.length < 2) return;
 
   switch(modelType) {
-    case MODEL_TYPE_FLAP_CYLINDER:  buildModel_Cylindrical_Flap(); break; 
+    case MODEL_TYPE_FLAP_CYLINDER:  
+			if (holeRadius > 0) {
+				buildModel_Cylindrical_Flap_With_Hole(); 
+			} else {
+				buildModel_Cylindrical_Flap();
+			}
+			break; 
     case MODEL_TYPE_PRISM_CYLINDER:  buildModel_Cylindrical_Prism(); break; 
     case MODEL_TYPE_FLAP_DISK:  buildModel_Disk_Flap(); break; 
     case MODEL_TYPE_PRISM_DISK:  buildModel_Disk_Prism(); break; 
@@ -1970,7 +2158,7 @@ function cpCanvas_draw() {
   let cpCenter_y = (cpMinCoordinate.y + cpMaxCoordinate.y)/2; 
 	ctx.translate(-cpCenter_x, -cpCenter_y);
   
-  if (bDrawGlueArea && (modelType == MODEL_TYPE_FLAP_CYLINDER || modelType == MODEL_TYPE_PRISM_CYLINDER)) {
+  if (bDrawGlueArea && ((modelType == MODEL_TYPE_FLAP_CYLINDER && holeRadius == 0) || modelType == MODEL_TYPE_PRISM_CYLINDER)) {
     ctx.fillStyle = COLOR_GLUE_AREA;
 	  ctx.beginPath();
     ctx.rect(GlueArea.x, GlueArea.y, GlueArea.w, GlueArea.h);
