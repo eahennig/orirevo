@@ -22,7 +22,7 @@ let modelType = MODEL_TYPE_FLAP_CYLINDER;
 let flapSize = 20;
 let holeRadius = 0;
 let bHideHline = true;
-let bDrawGlueArea = false;
+let bDrawGlueArea = true;
 let GlueArea = {};
 GlueArea.x = GlueArea.y = GlueArea.w = GlueArea.h = 0;
 let bShowGrid = true;
