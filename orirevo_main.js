@@ -761,8 +761,8 @@ let  container = document.getElementById("wrapper2");
 	container.addEventListener('wheel', onModelViewMouseWheel, false);
       
 const LineMat = new THREE.LineBasicMaterial({ color: linecolor, linewidth: 1 });
-const CreaseLineMaterial = new THREE.LineBasicMaterial({color:0x0000ff, linewdth:1});
-const FlapEdgeMaterial = new THREE.LineBasicMaterial({color:0xff0000, linewdth:1});
+const CreaseLineMaterial = new THREE.LineBasicMaterial({color:0x0000ff, linewidth:1});
+const FlapEdgeMaterial = new THREE.LineBasicMaterial({color:0xff0000, linewidth:1});
 
 let geometry;
 
@@ -1073,7 +1073,6 @@ function buildModel_Cylindrical_Flap() {
 
 
 function buildModel_Cylindrical_Flap_With_Hole() {
-	geometry = new THREE.BufferGeometry();
 	let N = modelDivNum;
 	let flapMargin = 0.01*flapSize;
 	let nPoints = pLine.length;
@@ -1102,23 +1101,17 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 		rmin = Math.min(rmin, x);
 		rmax = Math.max(rmax, x);
 	}
-	
-	// console.log("rmin: ", rmin, " rmax: ", rmax);
-			
+
 	// Calculate maximum radius of surface of revolution
 	let rc = Math.max(Math.abs(rmin), Math.abs(rmax));
 	let ri = 0.01*holeRadius*rc;
 	let ro = Math.sqrt(rc*rc + ri*ri);
 	
-	//	let b = flapMargin*ro/2;
 	let a = 2*ro*sinalpha2;
-	// let w = a + 2*b;
 	let w = a*(1 + flapMargin);
 	let b = (w-a)/2;
 	let glue = bDrawGlueArea? 0.2*(1 + 0.01*flapSize)*a : 0;
-		
-	// console.log("hole: ", holeRadius, "rc:", rc, "ri:", ri, "ro:", ro);
-	
+			
 	// Calculate crease line coordinates
 	u[0] = 0;
 	for (let i = 1; i < nPoints; i++) {
@@ -1132,9 +1125,7 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 		v[i] = (ri*cosalpha2*(px - rc) + sinalpha2*(px*rc + ri*ri))/ro;
 		x[i] = (cosalpha2*(px*rc + ri*ri) - ri*sinalpha2*(px - rc))/ro;
 	}
-	
-	// console.log("u:", u, "v:", v, "x:", x);
-	
+		
 	let pA = new Vec2d(ro*cosalpha2, -ro*sinalpha2);
 	let pB = new Vec2d(ro*cosalpha2, ro*sinalpha2);
 	
@@ -1178,17 +1169,12 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	pP.add(pA);
 	
 	// Calculate flap crease lines
-	//let flapEdgePoint = new Vec2d();
 	for (let i = 0; i < nPoints; i++) {
 		let fepoint = flapEdgePoint(x[i], v[i], pE, pP, EF);
 		e[i] = new Vec2d(fepoint);
 		fepoint.sub(new Vec2d(x[i], v[i]));
 		f[i] = v[i] - fepoint.length();
 	}
-		
-	// console.log("f: ", f);	
-
-	// console.log("a:", a, "b:", b, "w:", w);
 	
 	// Assemble crease pattern
 	for (let k = 0; k < N; k++) {
@@ -1213,10 +1199,16 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	cpMinCoordinate = cpGetMinCoordinate(cpEdges);
   cpMaxCoordinate = cpGetMaxCoordinate(cpEdges);
 
-	// console.log("cpmin:", cpMinCoordinate, "cpmax:", cpMaxCoordinate);
+  // Generate 3D model
 	
-	// For compatibility with J. Mitanis 3D modeling code
-	let unitWidth = w;
+	
+	geometry = new THREE.BufferGeometry();
+  let vIndex = 0;
+  let modelScale = 0.2;
+	let vertices3 = [];
+  let vertices = [];
+	let points_for_top_rim = [];
+	let points_for_bottom_rim = [];
 	
 	let minY = pLine[0].y;
   let maxY = pLine[0].y;
@@ -1226,18 +1218,6 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	}
 	let centerY = (minY + maxY)/2;
 	
-	geometry = new THREE.BufferGeometry();
-	
-	// generate 3D model
-  let vIndex = 0;
-  let modelScale = 0.2;
-  let vertices = [];
-  let indices = [];
-  let normals = [];
-	
-
-	let points_for_top_rim = [];
-	let points_for_bottom_rim = [];
 	for (let k = 0; k < N; k++) {
 		let points_for_creaseline = [];
 		let points_for_flapedge = [];
@@ -1248,158 +1228,78 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 			// Crease line
 			let xt = x[i]*cosphi + v[i]*sinphi;
 			let yt = -x[i]*sinphi + v[i]*cosphi;
-			let point = new Vec3d(xt, yt, pLine[i].y - centerY);
-			point.scale(modelScale);
-			points_for_creaseline.push( new THREE.Vector3(-point.x, -point.z, point.y));	
+			let pointc = new Vec3d(xt, yt, pLine[i].y - centerY);
+			pointc.scale(modelScale);
+			points_for_creaseline.push( new THREE.Vector3(-pointc.x, -pointc.z, pointc.y));	
+			vertices3.push(new Vec3d(pointc.x, pointc.y, pointc.z));
 			
 			// Flap edge
 			xt = e[i].x*cosphi + e[i].y*sinphi;
 			yt = -e[i].x*sinphi + e[i].y*cosphi;
-			point = new Vec3d(xt, yt, pLine[i].y - centerY);
-			point.scale(modelScale);
-			points_for_flapedge.push( new THREE.Vector3(-point.x, -point.z, point.y));	
+			let pointf = new Vec3d(xt, yt, pLine[i].y - centerY);
+			pointf.scale(modelScale);
+			points_for_flapedge.push( new THREE.Vector3(-pointf.x, -pointf.z, pointf.y));	
+			vertices3.push(new Vec3d(pointf.x, pointf.y, pointf.z));
 		}
 		group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints( points_for_creaseline ), CreaseLineMaterial));
 		group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints( points_for_flapedge ), FlapEdgeMaterial));
 		
+		// Top rim
 		points_for_top_rim.push(points_for_creaseline[0]);	
-		points_for_top_rim.push(points_for_flapedge[0]);	
-
+		points_for_top_rim.push(points_for_flapedge[0]);
+		
+		// Bottom rim
 		points_for_bottom_rim.push(points_for_creaseline[nPoints-1]);	
 		points_for_bottom_rim.push(points_for_flapedge[nPoints-1]);	
 	}
+
+	// Draw top and bottom rims
+	group.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints( points_for_top_rim ), LineMat));
+	group.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints( points_for_bottom_rim ), LineMat));
 	
-	// Close line paths for top and bottom rims
-	points_for_top_rim.push(points_for_top_rim[0]);
-	points_for_bottom_rim.push(points_for_bottom_rim[0]);
+	for (let k = 0; k < N; k++) {
+		for (let i = 0; i < nPoints-1; i++) {
+			let i0 = vIndex;
+			let i1 = vIndex + 1;
+			let i2 = vIndex + 2;
+			let i3 = vIndex + 3;
+			vertices.push(
+				-vertices3[i1].x, -vertices3[i1].z, vertices3[i1].y,
+				-vertices3[i0].x, -vertices3[i0].z, vertices3[i0].y,
+				-vertices3[i2].x, -vertices3[i2].z, vertices3[i2].y,
 
-	group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints( points_for_top_rim ), LineMat));
-	group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints( points_for_bottom_rim ), LineMat));
+				-vertices3[i1].x, -vertices3[i1].z, vertices3[i1].y,
+				-vertices3[i2].x, -vertices3[i2].z, vertices3[i2].y,
+				-vertices3[i3].x, -vertices3[i3].z, vertices3[i3].y
+			);
+			
+			// Faces between current flap edge and adjacent crease line
+			let adjacent; 
+			if (k == N-1) {
+				// Wrap around to beginning at end of loop
+				adjacent = vIndex - 2*(N-1)*nPoints;
+			} else {
+				adjacent = vIndex + 2*nPoints;
+			}
+			let a0 = adjacent;
+			let a2 = adjacent+2;
+			vertices.push(
+				-vertices3[i1].x, -vertices3[i1].z, vertices3[i1].y,
+				-vertices3[i3].x, -vertices3[i3].z, vertices3[i3].y,
+				-vertices3[a0].x, -vertices3[a0].z, vertices3[a0].y,
 
+				-vertices3[a0].x, -vertices3[a0].z, vertices3[a0].y,
+				-vertices3[i3].x, -vertices3[i3].z, vertices3[i3].y,
+				-vertices3[a2].x, -vertices3[a2].z, vertices3[a2].y
+			);
+			vIndex += 2;
+		}
+		vIndex += 2;
+	}
 
-	/*
-
-  for(let j = 0; j < pLine.length - 1; j++) {
-
-    let v0 = pLine[j];
-    let v1 = pLine[j+1];
-    let faceV = new Array(4);
-    faceV[0] = new Vec3d(v0.x, 0, v0.y);
-    let a0 = 2 * v0.x * Math.sin(Math.PI / N);
-    let b0 = (unitWidth - a0) /2;
-    let b0x = v0.x - (a0 + b0) * Math.cos(Math.PI * ( 0.5 - 1.0 / N));
-    let b0y = (a0 + b0) * Math.sin(Math.PI * ( 0.5 - 1.0 / N ));
-    faceV[1] = new Vec3d(b0x, b0y, v0.y);
-                
-    let a1 = 2 * v1.x * Math.sin( Math.PI / N );
-    let b1 = (unitWidth - a1) /2;
-    let b1x = v1.x - (a1+b1) * Math.cos(Math.PI * ( 0.5 - 1.0 / N));
-    let b1y = (a1 + b1) * Math.sin( Math.PI * ( 0.5 - 1.0 / N));
-    faceV[2] = new Vec3d(b1x, b1y, v1.y);
-    faceV[3] = new Vec3d(v1.x, 0, v1.y);
-                
-    // 裏側の面 // xがマイナスの値をとる場合に必要になる
-    let faceV2 = new Array(4);
-    faceV2[0] = new Vec3d(faceV[1]);
-
-    let c0_len = unitWidth - getDistance(faceV[0], faceV[1]);
-    let c1_len = unitWidth - getDistance(faceV[2], faceV[3]);
-    let dir_b0_c0 = Vec3d.Sub(faceV[1], faceV[0]);  dir_b0_c0.setLen(c0_len);      
-    faceV2[1] = Vec3d.Sub(faceV[1], dir_b0_c0);
-
-    let dir_b1_c1 = Vec3d.Sub(faceV[2], faceV[3]); dir_b1_c1.setLen(c1_len);                
-    faceV2[2] = Vec3d.Sub(faceV[2], dir_b1_c1);
-    faceV2[3] = new Vec3d(faceV[2]);
-
-    // 長さゼロの対処
-    if(c0_len < 0.001) { faceV2[1] = faceV2[0]; }
-    if(c1_len < 0.001) { faceV2[2] = faceV2[3]; }
-
-    // 描画するエッジ
-    let edges = [[1,2], [3,0]]; // 左右
-    if(j == 0) {
-      edges.push([0,1]); // 上端
-    } else {
-      let bHideH = (bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j], pLine[j+1])) < Math.PI /180.0 * hideAngleDeg);
-      if(!bHideH) {
-        edges.push([0,1]);
-      }
-    }
-
-    if(j == pLine.length -2) {
-      edges.push([2,3]); // 下端
-    }
-
-    for(let i = 0; i < N; i++) {
-      let angle = 2 * Math.PI / N * i;
-      let fv = new Array(4);
- 
-      for(let k = 0; k < 4; k++) {
-        fv[k] = new Vec3d();
-        // 回転させる
-        fv[k].z = faceV[k].z - centerY;
-        fv[k].x = faceV[k].x * Math.cos(angle) - faceV[k].y * Math.sin(angle);
-        fv[k].y = faceV[k].x * Math.sin(angle) + faceV[k].y * Math.cos(angle);
-        fv[k].scale(modelScale);
-
-        vertices.push(fv[k].x,  -fv[k].z, fv[k].y );
-      }
-
-      let nomalVec = Vec3d.Cross(Vec3d.Sub(fv[1], fv[0]), Vec3d.Sub(fv[2], fv[0]));
-      for(let k = 0; k < 4; k++)
-        normals.push(nomalVec.x,  -nomalVec.z, nomalVec.y );
-
-      for (let e of edges ) {
-        let si = e[0];
-        let ei = e[1];
-        points_for_line.push( new THREE.Vector3(fv[si].x,  -fv[si].z, fv[si].y));
-        points_for_line.push( new THREE.Vector3(fv[ei].x,  -fv[ei].z, fv[ei].y));
-      }
-
-      indices.push( vIndex, vIndex + 1, vIndex + 2 );
-      indices.push( vIndex, vIndex + 2, vIndex + 3 );
-      vIndex += 4;
-    }
-
-    // 裏側
-    for(let i = 0; i < N; i++) {
-      let angle = 2 * Math.PI / N * i;
-      let fv2 = new Array(4);
-        
-      for(let k = 0; k < 4; k++) {
-        fv2[k] = new Vec3d();
-        // 回転させる
-        fv2[k].z = faceV2[k].z - centerY;
-        fv2[k].x = faceV2[k].x * Math.cos(angle) - faceV2[k].y * Math.sin(angle);
-        fv2[k].y = faceV2[k].x * Math.sin(angle) + faceV2[k].y * Math.cos(angle);
-        fv2[k].scale(modelScale);
-
-        vertices.push(fv2[k].x,  -fv2[k].z, fv2[k].y );
-      }
-      let nomalVec = Vec3d.Cross(Vec3d.Sub(fv2[1], fv2[0]), Vec3d.Sub(fv2[2], fv2[0]));
-      for(let k = 0; k < 4; k++)
-        normals.push(nomalVec.x,  -nomalVec.z, nomalVec.y );
-
-      for (let e of edges ) {
-        let si = e[0];
-        let ei = e[1];
-        points_for_line.push( new THREE.Vector3(fv2[si].x,  -fv2[si].z, fv2[si].y));
-        points_for_line.push( new THREE.Vector3(fv2[ei].x,  -fv2[ei].z, fv2[ei].y));
-
-      }
-      indices.push( vIndex, vIndex + 1, vIndex + 2 );
-      indices.push( vIndex, vIndex + 2, vIndex + 3 );
-
-      vIndex += 4;
-    }
-  }
-	*/
-    
-
-  //geometry.setIndex( indices );
-  //geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
-  //geometry.setAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
-  //group.add(new THREE.Mesh(geometry, material));     
+  geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+	geometry.computeVertexNormals();
+  group.add(new THREE.Mesh(geometry, material));     
 }
 
 function flapEdgePoint(x, v, pE, pP, EF) {
