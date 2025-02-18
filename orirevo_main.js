@@ -1,7 +1,10 @@
+// ORI-REVO main program
+// Original version by Jun Mitani
+// With extensions by Eckhard Hennig https://www.instagram.com/iso_rigami
 
 import * as THREE from './three/three.module.js';
 
-document.getElementById('last_update').innerHTML = "Last update Jun. 7 2023<br>First release Jun. 8 2022";
+document.getElementById('last_update').innerHTML = "Last update Feb. 18 2025<br>First release Jun. 8 2022";
 
 const COLOR_GRID = 'rgb(200, 200, 200)';
 const COLOR_AXIS = 'rgb(0, 0, 0)';
@@ -1079,6 +1082,8 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	let u = new Array(nPoints);
 	let v = new Array(nPoints);
 	let x = new Array(nPoints);
+	let vp = new Array(nPoints);
+	let xp = new Array(nPoints);
 	let f = new Array(nPoints);
 	let e = new Array(nPoints);
 	cpEdges = [];
@@ -1107,33 +1112,36 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	let ri = 0.01*holeRadius*rc;
 	let ro = Math.sqrt(rc*rc + ri*ri);
 	
+	let singamma = ri/ro;
+	let cosgamma = rc/ro;
+	let sinbeta = sinalpha2*cosgamma - cosalpha2*singamma;
+	let cosbeta = cosalpha2*cosgamma + sinalpha2*singamma;
+	let sindelta = sinalpha2*cosgamma + cosalpha2*singamma;
+	let cosdelta = cosalpha2*cosgamma - sinalpha2*singamma;	
+	
 	let a = 2*ro*sinalpha2;
 	let w = a*(1 + flapMargin);
-	let b = (w-a)/2;
-	let glue = bDrawGlueArea? 0.2*(1 + 0.01*flapSize)*a : 0;
+	let b = (w - a)/2;
+	let glue = bDrawGlueArea? 0.2*w : 0;
 			
 	// Calculate crease line coordinates
 	u[0] = 0;
 	for (let i = 1; i < nPoints; i++) {
-		let dx = (rc*cosalpha2 - ri*sinalpha2)/ro * (pLine[i].x - pLine[i-1].x);
+		let dx = cosdelta*(pLine[i].x - pLine[i-1].x);
 		let dz = pLine[i].y - pLine[i-1].y;
 		u[i] = u[i-1] + Math.sqrt(dx*dx + dz*dz);
 	}
 	
 	for (let i = 0; i < nPoints; i++) {
 		let px = pLine[i].x;
-		v[i] = (ri*cosalpha2*(px - rc) + sinalpha2*(px*rc + ri*ri))/ro;
-		x[i] = (cosalpha2*(px*rc + ri*ri) - ri*sinalpha2*(px - rc))/ro;
+		v[i] = -ri*cosdelta + px*sindelta;
+		x[i] = ri*sindelta + px*cosdelta;
+		vp[i] = -ri*cosbeta - px*sinbeta;
+		xp[i] = -ri*sinbeta + px*cosbeta;
 	}
 		
 	let pA = new Vec2d(ro*cosalpha2, -ro*sinalpha2);
 	let pB = new Vec2d(ro*cosalpha2, ro*sinalpha2);
-	
-	let singamma = ri/ro;
-	let cosgamma = Math.sqrt(1 - singamma*singamma);
-	let sinbeta = sinalpha2*cosgamma - cosalpha2*singamma;
-	let cosbeta = cosalpha2*cosgamma + sinalpha2*singamma;
-	
 	let pC = new Vec2d(-ri*sinbeta - rc*cosbeta, -ri*cosbeta + rc*sinbeta);
 	let pD = new Vec2d(cosalpha*pC.x - sinalpha*pC.y, sinalpha*pC.x + cosalpha*pC.y);
 	let CD = new Vec2d(pD);
@@ -1162,7 +1170,7 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 		console.log("Zero determinant");
 		return undefined;
 	}
-	let detA1 = rhs.x*a2.y - rhs.y*a1.x;
+	let detA1 = rhs.x*a2.y - rhs.y*a2.x;
 	let lambda = detA1/detA;	
 	let pP = new Vec2d(BA);
 	pP.scale(lambda);
@@ -1170,10 +1178,12 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	
 	// Calculate flap crease lines
 	for (let i = 0; i < nPoints; i++) {
-		let fepoint = flapEdgePoint(x[i], v[i], pE, pP, EF);
-		e[i] = new Vec2d(fepoint);
-		fepoint.sub(new Vec2d(x[i], v[i]));
-		f[i] = v[i] - fepoint.length();
+		let fepoint1 = flapEdgePoint(x[i], v[i], pE, pP, EF);
+		let fepoint2 = flapEdgePoint(xp[i], vp[i], pE, pP, EF);
+		e[i] = new Vec2d(0.5*(fepoint1.x + fepoint2.x), 0.5*(fepoint1.y + fepoint2.y));
+		fepoint1.sub(new Vec2d(x[i], v[i]));
+		fepoint2.sub(new Vec2d(xp[i], vp[i]));
+		f[i] = v[i] - 0.5*(w + fepoint1.length() - fepoint2.length());
 	}
 	
 	// Assemble crease pattern
@@ -1311,7 +1321,7 @@ function flapEdgePoint(x, v, pE, pP, EF) {
 	rhs.sub(pE);
 	let detA = a1.x*a2.y - a1.y*a2.x;
 	if (detA == 0) return undefined;
-	let detA1 = rhs.x*a2.y - rhs.y*a1.x;
+	let detA1 = rhs.x*a2.y - rhs.y*a2.x;
 	let lambda = detA1/detA;
 	
 	// Calculate ponEF = pE + lambda*EF:
