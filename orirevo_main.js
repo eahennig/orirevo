@@ -4,7 +4,7 @@
 
 import * as THREE from './three/three.module.js';
 
-document.getElementById('last_update').innerHTML = "Last update Feb. 18 2025<br>First release Jun. 8 2022";
+document.getElementById('last_update').innerHTML = "Last update Mar 2, 2025<br>First release Jun 8, 2022";
 
 const COLOR_GRID = 'rgb(200, 200, 200)';
 const COLOR_AXIS = 'rgb(0, 0, 0)';
@@ -82,12 +82,15 @@ function file_loaded(txt) {
 
   flapSize = Number(data.flapSize);
   modelDivNum = Number(data.modelDivNum);
-	//holeRadius = Number(data.holeRadius);
-
+	holeRadius = Number(data.holeRadius);
+	if (isNaN(holeRadius)) {
+		holeRadius = 0;
+	}
+	
   document.getElementById("divNum").value = modelDivNum;
   document.getElementById("flapSizeRange").value = flapSize;
   document.getElementById("FlapSize").innerText = flapSize;
-	//document.getElementById("Hole").innerText = holeRadius;
+	document.getElementById("Hole").innerText = holeRadius;
 
   modelType = Number(data.modelType);
   let elements = document.getElementsByName('modelType');
@@ -2322,11 +2325,12 @@ function cpCanvas_onMouseWheel(e) {
 function exportOrirevo() {
   const orirevo_data = {};
   orirevo_data.application = 'orirevo';
-  orirevo_data.version = 1;
+  orirevo_data.version = 1.1;
   orirevo_data.vnum = pLine.length;
   orirevo_data.modelDivNum = modelDivNum;
   orirevo_data.flapSize = flapSize;
   orirevo_data.modelType = modelType;
+	orirevo_data.holeRadius = holeRadius;
 
   var xy = "";
   for (let i = 0; i < pLine.length; i++) {

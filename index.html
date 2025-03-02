@@ -20,7 +20,7 @@
   <style>
     body {
       margin: 0;
-    }
+    }   	
 
     .box {
       height: 100vh;
@@ -127,7 +127,11 @@
 <body>
   <div class="box">
     <div name="header" class="header">
-      ORI-REVO <span style="font-size:50%">(by <a href="https://mitani.cs.tsukuba.ac.jp/">Jun Mitani</a>, 2022)</span>
+      ORI-REVO 1.1 
+				<span style="font-size:50%">
+					(by <a href="https://mitani.cs.tsukuba.ac.jp/">Jun Mitani</a>, 2022;
+					with extensions by <a href="https://www.cfcorigami.com/creator/eckhardhennig">Eckhard Hennig</a>, 2025)
+				</span>
     </div>
     <div class="box2">
       <div class="menu">
@@ -144,28 +148,7 @@
               <tr>
                 <td width="50%"><label for="divNum">Divisions &nbsp;&nbsp;&nbsp;</label></td>
                 <td>
-                  <select class="custom-select custom-select-sm" id="divNum">
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                    <option value="6" selected>6</option>
-                    <option value="7">7</option>
-                    <option value="8">8</option>
-                    <option value="9">9</option>
-                    <option value="10">10</option>
-                    <option value="11">11</option>
-                    <option value="12">12</option>
-                    <option value="13">13</option>
-                    <option value="14">14</option>
-                    <option value="15">15</option>
-                    <option value="16">16</option>
-                    <option value="20">20</option>
-                    <option value="24">24</option>
-                    <option value="28">28</option>
-                    <option value="32">32</option>
-                    <option value="40">40</option>
-                    <option value="48">48</option>
-                  </select>
+									<input type="number" id="divNum" name="divNum" min="3" max="64" value="6">
                 </td>
               </tr>
             </table>
