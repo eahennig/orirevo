@@ -1095,6 +1095,7 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	let N = modelDivNum;
 	let flapMargin = 0.01*flapSize;
 	let holePercent = 0.01*holeRadius;
+	let minHideAngle = Math.PI/180.0*hideAngleDeg;
 	let nPoints = pLine.length;
 	let u = new Array(nPoints);
 	let v = new Array(nPoints);
@@ -1204,12 +1205,37 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	}
 	
 	// Assemble crease pattern
+	let MVreverse = pLine[0].y < pLine[nPoints-1].y;
 	for (let k = 0; k < N; k++) {
+		// Vertical crease lines
+		let offset = k*w;
 		for (let i = 0; i < nPoints-1; i++) {
-			cpEdges.push(new CPEdge(new Vec2d(v[i] + k*w, u[i]), new Vec2d(v[i+1] + k*w, u[i+1]), EDGE_TYPE_VALLEY));
-			cpEdges.push(new CPEdge(new Vec2d(f[i] + k*w, u[i]), new Vec2d(f[i+1] + k*w, u[i+1]), k == 0? EDGE_TYPE_BORDER : EDGE_TYPE_MOUNTAIN));
+			cpEdges.push(new CPEdge(new Vec2d(v[i] + offset, u[i]), new Vec2d(v[i+1] + offset, u[i+1]), EDGE_TYPE_VALLEY));
+			cpEdges.push(new CPEdge(new Vec2d(f[i] + offset, u[i]), new Vec2d(f[i+1] + offset, u[i+1]), k == 0? EDGE_TYPE_BORDER : EDGE_TYPE_MOUNTAIN));
 		}
+		// Non-flat edges
+		for (let i = 1; i < nPoints-1; i++) {
+			if (bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[i-1], pLine[i]), Vec2d.Sub(pLine[i], pLine[i+1])) < minHideAngle) continue;
+			let bRidge = Vec2d.Cross(Vec2d.Sub(pLine[i-1], pLine[i]), Vec2d.Sub(pLine[i+1], pLine[i])) > 0;
+			if (MVreverse) { bRidge = !bRidge; }
+							
+			let x1 = v[i] + offset; 
+			let x2 = f[i] + offset;
+			let x0 = x2 + w;
+			let y0 = u[i];
+			
+			if(bDrawGlueArea && k == 0) {
+				let x = f[i] + N*w;
+				cpEdges.push( new CPEdge(new Vec2d(x, y0), new Vec2d(x + glue, y0), bRidge ? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_VALLEY));
+			}
+							
+			cpEdges.push(new CPEdge( new Vec2d(x1, y0), new Vec2d(x2, y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY ));
+			if(pLine[i].x == rc*(1 + flapMargin)) { continue; }
+						 
+			cpEdges.push(new CPEdge( new Vec2d(x0, y0), new Vec2d(x1, y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN)); 
+		}		
 	}
+	
 	for (let i = 0; i < nPoints-1; i++) {
 		cpEdges.push(new CPEdge(new Vec2d(f[i] + N*w, u[i]), new Vec2d(f[i+1] + N*w, u[i+1]), bDrawGlueArea? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_BORDER));
 	}
@@ -1227,8 +1253,6 @@ function buildModel_Cylindrical_Flap_With_Hole() {
   cpMaxCoordinate = cpGetMaxCoordinate(cpEdges);
 
   // Generate 3D model
-	
-	
 	geometry = new THREE.BufferGeometry();
   let vIndex = 0;
   let modelScale = 0.2;
@@ -1236,6 +1260,8 @@ function buildModel_Cylindrical_Flap_With_Hole() {
   let vertices = [];
 	let points_for_top_rim = [];
 	let points_for_bottom_rim = [];
+	let horizontal_edge_points_c = new Array(N);
+	let horizontal_edge_points_f = new Array(N);
 	
 	let minY = pLine[0].y;
   let maxY = pLine[0].y;
@@ -1251,13 +1277,18 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 		let phi = k*alpha + alpha2;
 		let cosphi = Math.cos(phi);
 		let sinphi = Math.sin(phi);
+		
+		horizontal_edge_points_c[k] = [];
+		horizontal_edge_points_f[k] = [];
+
 		for (let i = 0; i < nPoints; i++) {
 			// Crease line
 			let xt = x[i]*cosphi + v[i]*sinphi;
 			let yt = -x[i]*sinphi + v[i]*cosphi;
 			let pointc = new Vec3d(xt, yt, pLine[i].y - centerY);
 			pointc.scale(modelScale);
-			points_for_creaseline.push( new THREE.Vector3(-pointc.x, -pointc.z, pointc.y));	
+			let vectorc = new THREE.Vector3(-pointc.x, -pointc.z, pointc.y);
+			points_for_creaseline.push(vectorc);	
 			vertices3.push(new Vec3d(pointc.x, pointc.y, pointc.z));
 			
 			// Flap edge
@@ -1265,8 +1296,17 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 			yt = -e[i].x*sinphi + e[i].y*cosphi;
 			let pointf = new Vec3d(xt, yt, pLine[i].y - centerY);
 			pointf.scale(modelScale);
-			points_for_flapedge.push( new THREE.Vector3(-pointf.x, -pointf.z, pointf.y));	
+			let vectorf = new THREE.Vector3(-pointf.x, -pointf.z, pointf.y)
+			points_for_flapedge.push(vectorf);	
 			vertices3.push(new Vec3d(pointf.x, pointf.y, pointf.z));
+			
+			// Horizontal edges
+			if (i > 0 && i < nPoints-1) {
+			  if (!bHideHline || Vec2d.Angle(Vec2d.Sub(pLine[i-1], pLine[i]), Vec2d.Sub(pLine[i], pLine[i+1])) > minHideAngle) {
+					horizontal_edge_points_c[k].push(vectorc);
+					horizontal_edge_points_f[k].push(vectorf);
+				}
+		  }
 		}
 		group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints( points_for_creaseline ), CreaseLineMaterial));
 		group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints( points_for_flapedge ), FlapEdgeMaterial));
@@ -1284,12 +1324,24 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	group.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints( points_for_top_rim ), LineMat));
 	group.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints( points_for_bottom_rim ), LineMat));
 	
+	// Draw horizontal edges
+	for (let i = 0; i < horizontal_edge_points_c[0].length; i++) {
+		let edgepoints = [];
+		for (let k = 0; k < N; k++) {
+			edgepoints.push(horizontal_edge_points_c[k][i]);
+			edgepoints.push(horizontal_edge_points_f[k][i]);
+		}
+		group.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(edgepoints), LineMat));
+	}
+	
+	// Draw mesh faces
 	for (let k = 0; k < N; k++) {
 		for (let i = 0; i < nPoints-1; i++) {
 			let i0 = vIndex;
 			let i1 = vIndex + 1;
 			let i2 = vIndex + 2;
 			let i3 = vIndex + 3;
+			// Keep it simple: soup of triangles
 			vertices.push(
 				-vertices3[i1].x, -vertices3[i1].z, vertices3[i1].y,
 				-vertices3[i0].x, -vertices3[i0].z, vertices3[i0].y,
