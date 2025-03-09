@@ -4,7 +4,7 @@
 
 import * as THREE from './three/three.module.js';
 
-document.getElementById('last_update').innerHTML = "Last update Mar 3, 2025<br>First release Jun 8, 2022";
+document.getElementById('last_update').innerHTML = "Last update Mar 9, 2025<br>First release Jun 8, 2022";
 
 const COLOR_GRID = 'rgb(200, 200, 200)';
 const COLOR_AXIS = 'rgb(0, 0, 0)';
@@ -132,6 +132,11 @@ function loadExampleData(type) {
       flapSize = 40;
       document.getElementById("flapSizeRange").value = flapSize;
       document.getElementById("FlapSize").innerText = flapSize;
+			
+			holeRadius = 0;
+			document.getElementById("holeRadiusRange").value = holeRadius;
+			document.getElementById("Hole").innerText = holeRadius;			
+			
       document.getElementById("type_flap_cylinder").checked = true;
       modelTypeChange(modelType);
       break;
@@ -146,6 +151,11 @@ function loadExampleData(type) {
       flapSize = 200;
       document.getElementById("flapSizeRange").value = flapSize;
       document.getElementById("FlapSize").innerText = flapSize;
+
+			holeRadius = 0;
+			document.getElementById("holeRadiusRange").value = holeRadius;
+			document.getElementById("Hole").innerText = holeRadius;	
+			
       document.getElementById("type_flap_cylinder").checked = true;
       modelTypeChange(modelType);
       break;
@@ -1084,6 +1094,7 @@ function buildModel_Cylindrical_Flap() {
 function buildModel_Cylindrical_Flap_With_Hole() {
 	let N = modelDivNum;
 	let flapMargin = 0.01*flapSize;
+	let holePercent = 0.01*holeRadius;
 	let nPoints = pLine.length;
 	let u = new Array(nPoints);
 	let v = new Array(nPoints);
@@ -1115,8 +1126,8 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 
 	// Calculate maximum radius of surface of revolution
 	let rc = Math.max(Math.abs(rmin), Math.abs(rmax));
-	let ri = 0.01*holeRadius*rc;
-	let ro = Math.sqrt(rc*rc + ri*ri);
+	let ro = rc/Math.sqrt(1 - holePercent*holePercent);
+	let ri = holePercent*ro;
 	
 	let singamma = ri/ro;
 	let cosgamma = rc/ro;
