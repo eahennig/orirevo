@@ -4,7 +4,7 @@
 
 import * as THREE from './three/three.module.js';
 
-document.getElementById('last_update').innerHTML = "Last update Mar 9, 2025<br>First release Jun 8, 2022";
+document.getElementById('last_update').innerHTML = "Last update Dec 29, 2025<br>First release Jun 8, 2022";
 
 const COLOR_GRID = 'rgb(200, 200, 200)';
 const COLOR_AXIS = 'rgb(0, 0, 0)';
@@ -800,47 +800,47 @@ function faceOpacityChange(i) {
 
 function modelScreen_init() {
 	// scene
-  scene = new THREE.Scene();
+	scene = new THREE.Scene();
 
 	// camera
-  camera = new THREE.PerspectiveCamera(60, container.getBoundingClientRect().width / container.getBoundingClientRect().height, 10, 1000);
-  camera.position.set(0, 0, 200);
-  scene.add(camera);
+	camera = new THREE.PerspectiveCamera(60, container.getBoundingClientRect().width / container.getBoundingClientRect().height, 10, 1000);
+	camera.position.set(0, 0, 200);
+	scene.add(camera);
 
 	// light
-  let light = new THREE.PointLight(0xffffff, 1);
-  light.position.set(100,100,100);
-  camera.add(light);
-            
-  let light2 = new THREE.AmbientLight( 0xc0c0c0 ); // soft white light
-  scene.add( light2 );
+	let light = new THREE.PointLight(0xffffff, 1);
+	light.position.set(100,100,100);
+	camera.add(light);
 
-  // material
-  material = new THREE.MeshPhongMaterial({
-   	side: THREE.DoubleSide,                                 
-   	color: 0xffffff, 
-   	specular:0xffffff,
-		shininess:0,
-		opacity:1.0,
-		transparent:true
- 	});
+	let light2 = new THREE.AmbientLight( 0xc0c0c0 ); // soft white light
+	scene.add( light2 );
+
+	// material
+	material = new THREE.MeshPhongMaterial({
+	side: THREE.DoubleSide,                                 
+	color: 0x7f7f7f, 
+	specular:0xffffff,
+	shininess:30,
+	opacity:1.0,
+	transparent:true
+	});
 
 	material.polygonOffset = true;		
-  material.depthTest = true;
+	material.depthTest = true;
 	material.polygonOffsetFactor = 1;
 	material.polygonOffsetUnits = 0.1;
 
 	// model
-  buildModel();
-	        
+	buildModel();
+
 	// renderer
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setClearColor(BACK_COLOR_3D_SCREEN);
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(container.getBoundingClientRect().width*0.98, container.getBoundingClientRect().height*0.98);
-  //        renderer.setSize(container.getBoundingClientRect().width, container.getBoundingClientRect().height);
+	renderer = new THREE.WebGLRenderer({ antialias: true });
+	renderer.setClearColor(BACK_COLOR_3D_SCREEN);
+	renderer.setPixelRatio(window.devicePixelRatio);
+	renderer.setSize(container.getBoundingClientRect().width*0.98, container.getBoundingClientRect().height*0.98);
+	//        renderer.setSize(container.getBoundingClientRect().width, container.getBoundingClientRect().height);
 	container.appendChild(renderer.domElement);
-  renderer.render(scene, camera);
+	renderer.render(scene, camera);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1098,13 +1098,12 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	let holePercent = 0.01*holeRadius;
 	let minHideAngle = Math.PI/180.0*hideAngleDeg;
 	let nPoints = pLine.length;
+	let xh = new Array(nPoints);
+	let yh = new Array(nPoints);
+	let zh = new Array(nPoints);
 	let u = new Array(nPoints);
 	let v = new Array(nPoints);
-	let x = new Array(nPoints);
-	let vp = new Array(nPoints);
-	let xp = new Array(nPoints);
-	let f = new Array(nPoints);
-	let e = new Array(nPoints);
+	let lv = new Array(nPoints);
 	cpEdges = [];
 	
 	// Half-angle of polygon gore
@@ -1133,101 +1132,64 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	
 	let singamma = ri/ro;
 	let cosgamma = rc/ro;
-	let sinbeta = sinalpha2*cosgamma - cosalpha2*singamma;
-	let cosbeta = cosalpha2*cosgamma + sinalpha2*singamma;
-	let sindelta = sinalpha2*cosgamma + cosalpha2*singamma;
-	let cosdelta = cosalpha2*cosgamma - sinalpha2*singamma;	
+	let sinbeta = sinalpha2*cosgamma + cosalpha2*singamma
+	let cosbeta = cosalpha2*cosgamma - sinalpha2*singamma;
 	
 	let a = 2*ro*sinalpha2;
 	let w = a*(1 + flapMargin);
 	let b = (w - a)/2;
 	let glue = bDrawGlueArea? 0.2*w : 0;
+	
+	let rixsinbeta = ri*sinbeta;
+	let rixcosbeta = ri*cosbeta;
+	for (let i = 0; i < nPoints; i++) {
+		xh[i] = cosbeta*pLine[i].x - rixsinbeta;
+		yh[i] = -sinbeta*pLine[i].x - rixcosbeta;
+		zh[i] = pLine[i].y;
+		v[i] = yh[i]; 
+	}
 			
 	// Calculate crease line coordinates
 	u[0] = 0;
 	for (let i = 1; i < nPoints; i++) {
-		let dx = cosdelta*(pLine[i].x - pLine[i-1].x);
-		let dz = pLine[i].y - pLine[i-1].y;
+		let dx = xh[i] - xh[i-1];
+		let dz = zh[i] - zh[i-1];
 		u[i] = u[i-1] + Math.sqrt(dx*dx + dz*dz);
 	}
 	
+	// Calculate flap line coordinates
+	let B = new Vec2d(-ro*cosalpha2, -ro*sinalpha2);
+	let E = new Vec2d(ro*cosbeta*cosgamma - rixsinbeta, -ro*sinbeta*cosgamma - rixcosbeta);
+	let BE = new Vec2d(E);
+	BE.sub(B);
+	let m = BE.y/BE.x;
 	for (let i = 0; i < nPoints; i++) {
-		let px = pLine[i].x;
-		v[i] = -ri*cosdelta + px*sindelta;
-		x[i] = ri*sindelta + px*cosdelta;
-		vp[i] = -ri*cosbeta - px*sinbeta;
-		xp[i] = -ri*sinbeta + px*cosbeta;
+		lv[i] = B.y + m*(xh[i] - B.x) - b;
 	}
 		
-	let pA = new Vec2d(ro*cosalpha2, -ro*sinalpha2);
-	let pB = new Vec2d(ro*cosalpha2, ro*sinalpha2);
-	let pC = new Vec2d(-ri*sinbeta - rc*cosbeta, -ri*cosbeta + rc*sinbeta);
-	let pD = new Vec2d(cosalpha*pC.x - sinalpha*pC.y, sinalpha*pC.x + cosalpha*pC.y);
-	let CD = new Vec2d(pD);
-	CD.sub(pC);
-	CD.normalize();
-	let BA = new Vec2d(pA);
-	BA.sub(pB);
-	BA.normalize();
-	let pE = new Vec2d(CD);
-	pE.scale(b);
-	pE.add(pD);
-	let pF = new Vec2d(BA);
-	pF.scale(b);
-	pF.add(pA);
-	let EF = new Vec2d(pF);
-	EF.sub(pE);
-	EF.normalize();
-
-	let a2 = new Vec2d(CD);
-	let a1 = new Vec2d(BA);
-	a1.scale(-1);
-	let rhs = new Vec2d(pA);
-	rhs.sub(pD);
-	let detA = a1.x*a2.y - a1.y*a2.x;
-	if (detA == 0) {
-		console.log("Zero determinant");
-		return undefined;
-	}
-	let detA1 = rhs.x*a2.y - rhs.y*a2.x;
-	let lambda = detA1/detA;	
-	let pP = new Vec2d(BA);
-	pP.scale(lambda);
-	pP.add(pA);
-	
-	// Calculate flap crease lines
-	for (let i = 0; i < nPoints; i++) {
-		let fepoint1 = flapEdgePoint(x[i], v[i], pE, pP, EF);
-		let fepoint2 = flapEdgePoint(xp[i], vp[i], pE, pP, EF);
-		e[i] = new Vec2d(0.5*(fepoint1.x + fepoint2.x), 0.5*(fepoint1.y + fepoint2.y));
-		fepoint1.sub(new Vec2d(x[i], v[i]));
-		fepoint2.sub(new Vec2d(xp[i], vp[i]));
-		f[i] = v[i] - 0.5*(w + fepoint1.length() - fepoint2.length());
-	}
-	
 	// Assemble crease pattern
 	let MVreverse = pLine[0].y < pLine[nPoints-1].y;
 	for (let k = 0; k < N; k++) {
 		// Vertical crease lines
 		let offset = k*w;
 		for (let i = 0; i < nPoints-1; i++) {
-			cpEdges.push(new CPEdge(new Vec2d(v[i] + offset, u[i]), new Vec2d(v[i+1] + offset, u[i+1]), EDGE_TYPE_VALLEY));
-			cpEdges.push(new CPEdge(new Vec2d(f[i] + offset, u[i]), new Vec2d(f[i+1] + offset, u[i+1]), k == 0? EDGE_TYPE_BORDER : EDGE_TYPE_MOUNTAIN));
+			cpEdges.push(new CPEdge(new Vec2d(-v[i] + offset, u[i]), new Vec2d(-v[i+1] + offset, u[i+1]), EDGE_TYPE_VALLEY));
+			cpEdges.push(new CPEdge(new Vec2d(-lv[i] + offset, u[i]), new Vec2d(-lv[i+1] + offset, u[i+1]), bDrawGlueArea || k < N-1? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_BORDER));
 		}
 		// Non-flat edges
 		for (let i = 1; i < nPoints-1; i++) {
 			if (bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[i-1], pLine[i]), Vec2d.Sub(pLine[i], pLine[i+1])) < minHideAngle) continue;
-			let bRidge = Vec2d.Cross(Vec2d.Sub(pLine[i-1], pLine[i]), Vec2d.Sub(pLine[i+1], pLine[i])) > 0;
+			let bRidge = Vec2d.Cross(Vec2d.Sub(pLine[i-1], pLine[i]), Vec2d.Sub(pLine[i+1], pLine[i])) < 0;
 			if (MVreverse) { bRidge = !bRidge; }
 							
-			let x1 = v[i] + offset; 
-			let x2 = f[i] + offset;
-			let x0 = x2 + w;
+			let x1 = -v[i] + offset; 
+			let x2 = -lv[i] + offset;
+			let x0 = x2 - w;
 			let y0 = u[i];
 			
 			if(bDrawGlueArea && k == 0) {
-				let x = f[i] + N*w;
-				cpEdges.push( new CPEdge(new Vec2d(x, y0), new Vec2d(x + glue, y0), bRidge ? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_VALLEY));
+				let x = -lv[i] + (N - 1)*w;
+				cpEdges.push( new CPEdge(new Vec2d(x, y0), new Vec2d(x + glue, y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));
 			}
 							
 			cpEdges.push(new CPEdge( new Vec2d(x1, y0), new Vec2d(x2, y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY ));
@@ -1237,35 +1199,40 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 		}		
 	}
 
+	// Draw left border
 	for (let i = 0; i < nPoints-1; i++) {
-		cpEdges.push(new CPEdge(new Vec2d(f[i] + N*w, u[i]), new Vec2d(f[i+1] + N*w, u[i+1]), bDrawGlueArea? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_BORDER));
+		cpEdges.push(new CPEdge(new Vec2d(-lv[i] - w, u[i]), new Vec2d(-lv[i+1] - w, u[i+1]), EDGE_TYPE_BORDER));
 	}
+
+	// Draw glue area
 	if (bDrawGlueArea) {
 		for (let i = 0; i < nPoints-1; i++) {
-			cpEdges.push(new CPEdge(new Vec2d(f[i] + N*w + glue, u[i]), new Vec2d(f[i+1] + N*w + glue, u[i+1]), EDGE_TYPE_BORDER));
+			cpEdges.push(new CPEdge(new Vec2d(-lv[i] + (N-1)*w + glue, u[i]), new Vec2d(-lv[i+1] + (N-1)*w + glue, u[i+1]), EDGE_TYPE_BORDER));
 		}
 	}
-	cpEdges.push(new CPEdge(new Vec2d(f[0], u[0]), new Vec2d(f[0] + N*w + glue, u[0]), EDGE_TYPE_BORDER));
-	cpEdges.push(new CPEdge(new Vec2d(f[nPoints-1], u[nPoints-1]), new Vec2d(f[nPoints-1] + N*w + glue, u[nPoints-1]), EDGE_TYPE_BORDER));
+	
+	// Draw top and bottom borders
+	cpEdges.push(new CPEdge(new Vec2d(-lv[0] - w, u[0]), new Vec2d(-lv[0] + (N-1)*w + glue, u[0]), EDGE_TYPE_BORDER));
+	cpEdges.push(new CPEdge(new Vec2d(-lv[nPoints-1] - w, u[nPoints-1]), new Vec2d(-lv[nPoints-1] + (N-1)*w + glue, u[nPoints-1]), EDGE_TYPE_BORDER));
 
 	cpScale(cpEdges, 0.3);
 
 	cpMinCoordinate = cpGetMinCoordinate(cpEdges);
-  cpMaxCoordinate = cpGetMaxCoordinate(cpEdges);
+	cpMaxCoordinate = cpGetMaxCoordinate(cpEdges);
 
-  // Generate 3D model
+	// Generate 3D model
 	geometry = new THREE.BufferGeometry();
-  let vIndex = 0;
-  let modelScale = 0.2;
+	let vIndex = 0;
+	let modelScale = 0.2;
 	let vertices3 = [];
-  let vertices = [];
+	let vertices = [];
 	let points_for_top_rim = [];
 	let points_for_bottom_rim = [];
 	let horizontal_edge_points_c = new Array(N);
 	let horizontal_edge_points_f = new Array(N);
-
+	
 	let minY = pLine[0].y;
-  let maxY = pLine[0].y;
+	let maxY = pLine[0].y;
 	for (let i = 1; i < nPoints; i++) {
 		minY = Math.min(minY, pLine[i].y);
 		maxY = Math.max(maxY, pLine[i].y);
@@ -1275,7 +1242,8 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	for (let k = 0; k < N; k++) {
 		let points_for_creaseline = [];
 		let points_for_flapedge = [];
-		let phi = k*alpha + alpha2;
+		// +Pi for coherence with ORI-REVO's coordinate system.
+		let phi = k*alpha + alpha2 + Math.PI;
 		let cosphi = Math.cos(phi);
 		let sinphi = Math.sin(phi);
 
@@ -1283,29 +1251,29 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 		horizontal_edge_points_f[k] = [];
 
 		for (let i = 0; i < nPoints; i++) {
+			// Flap edge
+			let xt = xh[i]*cosphi + lv[i]*sinphi;
+			let yt = -xh[i]*sinphi + lv[i]*cosphi;
+			let pointf = new Vec3d(xt, yt, pLine[i].y - centerY);
+			pointf.scale(modelScale);
+			let vectorf = new THREE.Vector3(-pointf.x, -pointf.z, pointf.y)
+			points_for_flapedge.push(vectorf);	
+			vertices3.push(new Vec3d(pointf.x, pointf.y, pointf.z));
+			
 			// Crease line
-			let xt = x[i]*cosphi + v[i]*sinphi;
-			let yt = -x[i]*sinphi + v[i]*cosphi;
+			xt = xh[i]*cosphi + yh[i]*sinphi;
+			yt = -xh[i]*sinphi + yh[i]*cosphi;
 			let pointc = new Vec3d(xt, yt, pLine[i].y - centerY);
 			pointc.scale(modelScale);
 			let vectorc = new THREE.Vector3(-pointc.x, -pointc.z, pointc.y);
 			points_for_creaseline.push(vectorc);	
 			vertices3.push(new Vec3d(pointc.x, pointc.y, pointc.z));
 
-			// Flap edge
-			xt = e[i].x*cosphi + e[i].y*sinphi;
-			yt = -e[i].x*sinphi + e[i].y*cosphi;
-			let pointf = new Vec3d(xt, yt, pLine[i].y - centerY);
-			pointf.scale(modelScale);
-			let vectorf = new THREE.Vector3(-pointf.x, -pointf.z, pointf.y)
-			points_for_flapedge.push(vectorf);	
-			vertices3.push(new Vec3d(pointf.x, pointf.y, pointf.z));
-
 			// Horizontal edges
 			if (i > 0 && i < nPoints-1) {
 			  if (!bHideHline || Vec2d.Angle(Vec2d.Sub(pLine[i-1], pLine[i]), Vec2d.Sub(pLine[i], pLine[i+1])) > minHideAngle) {
-					horizontal_edge_points_c[k].push(vectorc);
 					horizontal_edge_points_f[k].push(vectorf);
+					horizontal_edge_points_c[k].push(vectorc);
 				}
 		  }
 		}
@@ -1313,12 +1281,16 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 		group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints( points_for_flapedge ), FlapEdgeMaterial));
 
 		// Top rim
-		points_for_top_rim.push(points_for_creaseline[0]);	
+		//points_for_top_rim.push(points_for_creaseline[0]);	
 		points_for_top_rim.push(points_for_flapedge[0]);
+		points_for_top_rim.push(points_for_creaseline[0]);	
+
 
 		// Bottom rim
-		points_for_bottom_rim.push(points_for_creaseline[nPoints-1]);	
+		//points_for_bottom_rim.push(points_for_creaseline[nPoints-1]);	
 		points_for_bottom_rim.push(points_for_flapedge[nPoints-1]);	
+		points_for_bottom_rim.push(points_for_creaseline[nPoints-1]);	
+
 	}
 
 	// Draw top and bottom rims
@@ -1329,8 +1301,8 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	for (let i = 0; i < horizontal_edge_points_c[0].length; i++) {
 		let edgepoints = [];
 		for (let k = 0; k < N; k++) {
-			edgepoints.push(horizontal_edge_points_c[k][i]);
 			edgepoints.push(horizontal_edge_points_f[k][i]);
+			edgepoints.push(horizontal_edge_points_c[k][i]);
 		}
 		group.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(edgepoints), LineMat));
 	}
@@ -1382,25 +1354,6 @@ function buildModel_Cylindrical_Flap_With_Hole() {
   group.add(new THREE.Mesh(geometry, material));     
 }
 
-function flapEdgePoint(x, v, pE, pP, EF) {
-	let pXV = new Vec2d(x, v);
-	let a1 = new Vec2d(EF);
-	let a2 = new Vec2d(pP);
-	a2.sub(pXV);
-	let rhs = new Vec2d(pXV);
-	rhs.sub(pE);
-	let detA = a1.x*a2.y - a1.y*a2.x;
-	if (detA == 0) return undefined;
-	let detA1 = rhs.x*a2.y - rhs.y*a2.x;
-	let lambda = detA1/detA;
-	
-	// Calculate ponEF = pE + lambda*EF:
-	let ponEF = new Vec2d(EF);
-	ponEF.scale(lambda);
-	ponEF.add(pE);
-
-	return ponEF;
-}
 
 function buildModel_Cylindrical_Prism() {
   let vNum = pLine.length;
