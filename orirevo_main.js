@@ -86,7 +86,7 @@ function file_loaded(txt) {
 	if (isNaN(holeRadius)) {
 		holeRadius = 0;
 	}
-	
+
   document.getElementById("divNum").value = modelDivNum;
   document.getElementById("flapSizeRange").value = flapSize;
   document.getElementById("FlapSize").innerText = flapSize;
@@ -99,7 +99,7 @@ function file_loaded(txt) {
 
   modelTypeChange(modelType);
 
-  let vnum = data.vnum; 
+  let vnum = data.vnum;
   let xy = data.xy.split(',');
   for (let i = 0; i < vnum; i++) {
     pLine.push(new Vec2d(Number(xy[i*2]), Number(xy[i*2+1])));
@@ -127,17 +127,17 @@ function loadExampleData(type) {
       pLine = [];
       setData_Sphere(pLine, GRID_AREA_W);
       modelType = MODEL_TYPE_FLAP_CYLINDER;
-      modelDivNum = 8;      
+      modelDivNum = 8;
       document.getElementById("divNum").value = modelDivNum;
-      
+
       flapSize = 40;
       document.getElementById("flapSizeRange").value = flapSize;
       document.getElementById("FlapSize").innerText = flapSize;
-			
+
 			holeRadius = 0;
 			document.getElementById("holeRadiusRange").value = holeRadius;
-			document.getElementById("Hole").innerText = holeRadius;			
-			
+			document.getElementById("Hole").innerText = holeRadius;
+
       document.getElementById("type_flap_cylinder").checked = true;
       modelTypeChange(modelType);
       break;
@@ -146,17 +146,17 @@ function loadExampleData(type) {
       pLine = [];
       setData_Sphere(pLine, GRID_AREA_W);
       modelType = MODEL_TYPE_FLAP_CYLINDER;
-      modelDivNum = 16;      
+      modelDivNum = 16;
       document.getElementById("divNum").value = modelDivNum;
-      
+
       flapSize = 200;
       document.getElementById("flapSizeRange").value = flapSize;
       document.getElementById("FlapSize").innerText = flapSize;
 
 			holeRadius = 0;
 			document.getElementById("holeRadiusRange").value = holeRadius;
-			document.getElementById("Hole").innerText = holeRadius;	
-			
+			document.getElementById("Hole").innerText = holeRadius;
+
       document.getElementById("type_flap_cylinder").checked = true;
       modelTypeChange(modelType);
       break;
@@ -165,17 +165,17 @@ function loadExampleData(type) {
       pLine = [];
       setData_Egg(pLine, GRID_AREA_W);
       modelType = MODEL_TYPE_FLAP_DISK;
-      modelDivNum = 8;      
+      modelDivNum = 8;
       document.getElementById("divNum").value = modelDivNum;
       document.getElementById("type_flap_disk").checked = true;
       modelTypeChange(modelType);
       break;
-    
+
     case 'wrapped_sphere':
       pLine = [];
       setData_WrappedSphere(pLine, GRID_AREA_W);
       modelType = MODEL_TYPE_FLAP_DISK;
-      modelDivNum = 8;      
+      modelDivNum = 8;
       document.getElementById("divNum").value = modelDivNum;
       document.getElementById("type_flap_disk").checked = true;
       modelTypeChange(modelType);
@@ -303,7 +303,7 @@ export function buttonPressed(s) {
     document.getElementById('undo_smooth').disabled = true;
 
   } else if (s == 'grid') {
-    bShowGrid = document.getElementById("ck_grid").checked;      
+    bShowGrid = document.getElementById("ck_grid").checked;
     mainCanvas_draw();
 
   } else if (s == 'grid_dec' && bShowGrid) {
@@ -327,23 +327,23 @@ export function buttonPressed(s) {
     push_undoHistory();
     document.getElementById('undo_smooth').disabled = false;
 
-    const startTime = performance.now();     
+    const startTime = performance.now();
     smooth();
     pLineChanged = true;
     mainCanvas_draw();
 
-    const endTime = performance.now(); 
+    const endTime = performance.now();
     console.log("time ", endTime - startTime);
 
   } else if (s == 'hide_hline') {
-    bHideHline = document.getElementById("ck_hideHline").checked;    
+    bHideHline = document.getElementById("ck_hideHline").checked;
     document.getElementById("hideAngleRange").disabled = !bHideHline;
     // モデルの生成と展開図の生成を同時に行うので、このようになっている
     pLineChanged = true;
     mainCanvas_draw();
 
   } else if (s == 'draw_glue_area') {
-    bDrawGlueArea = document.getElementById("ck_glueArea").checked;    
+    bDrawGlueArea = document.getElementById("ck_glueArea").checked;
     // モデルの生成と展開図の生成を同時に行うので、このようになっている
     pLineChanged = true;
     mainCanvas_draw();
@@ -360,7 +360,7 @@ export function buttonPressed(s) {
     }
 
   } else if(s == 'animation') {
-    if (document.getElementById("ck_Animation").checked) {   
+    if (document.getElementById("ck_Animation").checked) {
       morphParams.pLineBkup = new Array();
       for (let p of pLine) morphParams.pLineBkup.push(new Vec2d(p));
       morphParams.timer = setInterval(morphAnimation, morphParams.intervalMS);
@@ -400,7 +400,7 @@ function morphAnimation() {
   for (let p of morphParams.pLineBkup) {
     pLine.push(new Vec2d(p));
   }
-  
+
   morph(morphParams.ratioInt / 100);
 
   pLineChanged = true;
@@ -412,7 +412,7 @@ function modelTypeChange(type) {
   if(pLine.length != 0 && (type == MODEL_TYPE_FLAP_DISK || type == MODEL_TYPE_PRISM_DISK)) {
     pLine[0].x = 0;
   }
-  pLineChanged = true;    
+  pLineChanged = true;
   mainCanvas_draw();
 	if(type == MODEL_TYPE_FLAP_CYLINDER) {
     document.getElementById('div_hole').style.visibility ="visible";
@@ -449,13 +449,13 @@ function smooth() {
   }
 
   pLine.push(new Vec2d(tmpVec[tmpVec.length - 1].x, tmpVec[tmpVec.length - 1].y));
-                
+
   tmpVec = [];
-  
+
   for ( let i = 0; i < pLine.length; i++) {
     tmpVec.push(new Vec2d(0, 0));
   }
- 
+
   for(let j = 0; j < pLine.length; j++) {
     if(j > 0 && j < pLine.length -1) {
       tmpVec[j].x = pLine[j-1].x * 0.25 + pLine[j].x * 0.5 + pLine[j+1].x * 0.25;
@@ -464,10 +464,10 @@ function smooth() {
       tmpVec[j].set(pLine[j]);
     }
   }
-            
+
   for(let j = 0; j < pLine.length; j++) {
     pLine[j].set(tmpVec[j]);
-  }  
+  }
 }
 
 function windowResized() {
@@ -486,23 +486,23 @@ function mainCanvas_drawGrid(ctx) {
   if (bShowGrid) {
     for (let x = -W; x <= W; x+= d) {
       ctx.beginPath();
-      ctx.moveTo(x, -W);    
+      ctx.moveTo(x, -W);
       ctx.lineTo(x, W);
-      ctx.stroke();    
+      ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(-W, x);    
+      ctx.moveTo(-W, x);
       ctx.lineTo(W, x);
-      ctx.stroke();    
+      ctx.stroke();
     }
   }
 
   ctx.strokeStyle = COLOR_AXIS;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(0, -W);    
+  ctx.moveTo(0, -W);
   ctx.lineTo(0, W);
-  ctx.stroke();    
+  ctx.stroke();
   ctx.lineWidth = 1;
 }
 
@@ -522,7 +522,7 @@ function mainCanvas_draw() {
 
   // drawGrid
   mainCanvas_drawGrid(ctx);
-    
+
   ctx.strokeStyle = COLOR_PLINE;
   ctx.fillStyle = COLOR_POINT;
 
@@ -577,7 +577,7 @@ function mainCanvas_onMouseDown(e) {
  		if (pickedIndex != -1) {
       if (event.getModifierState( "Control" )) { // Ctrlを押していたら頂点を分割
     	  let i = pickPointIndex(px, py);
-        if ( i != -1 ) {          
+        if ( i != -1 ) {
           pLine.splice(i, 0, new Vec2d(px, py));
         }
       }
@@ -689,10 +689,10 @@ function mainCanvas_onMouseMove(e) {
   let mouseX = e.clientX - rect.left;
   let mouseY = e.clientY - rect.top;
 
-	if( mainCanvas_pressedMouseButton == 3){ // right	
+	if( mainCanvas_pressedMouseButton == 3){ // right
     mainCanvas_transVec.x += (mouseX - mainCanvas_preMouseX);
     mainCanvas_transVec.y += (mouseY - mainCanvas_preMouseY);
-		
+
     mainCanvas_draw();
 
 	} else if (mainCanvas_pressedMouseButton == 1) {
@@ -748,7 +748,7 @@ const EDGE_TYPE_VALLEY = 2;
 class CPEdge {
   sp;
   ep;
-  type; 
+  type;
 
   constructor(sp, ep, type) {
     this.sp = sp;
@@ -779,7 +779,7 @@ let  container = document.getElementById("wrapper2");
   container.addEventListener('mouseup', onModelViewMouseUp, false);
   container.addEventListener('mousedown', onModelViewMouseDown, false);
 	container.addEventListener('wheel', onModelViewMouseWheel, false);
-      
+
 const LineMat = new THREE.LineBasicMaterial({ color: linecolor, linewidth: 1 });
 const CreaseLineMaterial = new THREE.LineBasicMaterial({color:0x0000ff, linewidth:1});
 const FlapEdgeMaterial = new THREE.LineBasicMaterial({color:0xff0000, linewidth:1});
@@ -817,15 +817,15 @@ function modelScreen_init() {
 
 	// material
 	material = new THREE.MeshPhongMaterial({
-	side: THREE.DoubleSide,                                 
-	color: 0x7f7f7f, 
-	specular:0xffffff,
-	shininess:30,
-	opacity:1.0,
-	transparent:true
+		side: THREE.DoubleSide,
+		color: 0x7f7f7f,
+		specular:0xffffff,
+		shininess:30,
+		opacity:1.0,
+		transparent:true
 	});
 
-	material.polygonOffset = true;		
+	material.polygonOffset = true;
 	material.depthTest = true;
 	material.polygonOffsetFactor = 1;
 	material.polygonOffsetUnits = 0.1;
@@ -861,7 +861,7 @@ function buildModel_Cylindrical_Flap() {
   let minY = pLine[0].y;
   let maxY = pLine[0].y;
 
-  // 水平な折り線の位置計算  
+  // 水平な折り線の位置計算
   for( let i = 1; i < pLine.length; i++ ) {
     let x = pLine[i].x;
     maxX = Math.max(maxX, Math.abs(x));
@@ -895,7 +895,7 @@ function buildModel_Cylindrical_Flap() {
     let x = - unitWidth * 0.2;
     cpEdges.push( new CPEdge(new Vec2d(x, 0), new Vec2d(x, height), EDGE_TYPE_BORDER));
   }
-        
+
   // 上下のカットライン
   let x = bDrawGlueArea ? - unitWidth * 0.2 : 0;
   cpEdges.push(new CPEdge(new Vec2d(x, 0), new Vec2d(unitWidth * N, 0), EDGE_TYPE_BORDER));
@@ -918,7 +918,7 @@ function buildModel_Cylindrical_Flap() {
         let bRidge = Vec2d.Cross(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j+1], pLine[j])) > 0;
 
         if (MVreverce) { bRidge = !bRidge; }
-                
+
         let x0 = unitWidth * i;
         let x1 = unitWidth * i + (maxX - pLine[j].x)* Math.sin(Math.PI / N);
         let x2 = unitWidth * (i+1);
@@ -928,11 +928,11 @@ function buildModel_Cylindrical_Flap() {
           let x = - unitWidth * 0.2;
           cpEdges.push( new CPEdge(new Vec2d(x, y0), new Vec2d(0, y0), bRidge ? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_VALLEY));
         }
-                
-        cpEdges.push(new CPEdge( new Vec2d(x1, y0), new Vec2d(x2, y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY ));                  
+
+        cpEdges.push(new CPEdge( new Vec2d(x1, y0), new Vec2d(x2, y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY ));
         if(pLine[j].x == maxX) { continue; } // 1本だけのケース
-               
-        cpEdges.push(new CPEdge( new Vec2d(x0, y0), new Vec2d(x1, y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));                  
+
+        cpEdges.push(new CPEdge( new Vec2d(x0, y0), new Vec2d(x1, y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));
       }
   }
 
@@ -976,24 +976,24 @@ function buildModel_Cylindrical_Flap() {
     let b0x = v0.x - (a0 + b0) * Math.cos(Math.PI * ( 0.5 - 1.0 / N));
     let b0y = (a0 + b0) * Math.sin(Math.PI * ( 0.5 - 1.0 / N ));
     faceV[1] = new Vec3d(b0x, b0y, v0.y);
-                
+
     let a1 = 2 * v1.x * Math.sin( Math.PI / N );
     let b1 = (unitWidth - a1) /2;
     let b1x = v1.x - (a1+b1) * Math.cos(Math.PI * ( 0.5 - 1.0 / N));
     let b1y = (a1 + b1) * Math.sin( Math.PI * ( 0.5 - 1.0 / N));
     faceV[2] = new Vec3d(b1x, b1y, v1.y);
     faceV[3] = new Vec3d(v1.x, 0, v1.y);
-                
+
     // 裏側の面 // xがマイナスの値をとる場合に必要になる
     let faceV2 = new Array(4);
     faceV2[0] = new Vec3d(faceV[1]);
 
     let c0_len = unitWidth - getDistance(faceV[0], faceV[1]);
     let c1_len = unitWidth - getDistance(faceV[2], faceV[3]);
-    let dir_b0_c0 = Vec3d.Sub(faceV[1], faceV[0]);  dir_b0_c0.setLen(c0_len);      
+    let dir_b0_c0 = Vec3d.Sub(faceV[1], faceV[0]);  dir_b0_c0.setLen(c0_len);
     faceV2[1] = Vec3d.Sub(faceV[1], dir_b0_c0);
 
-    let dir_b1_c1 = Vec3d.Sub(faceV[2], faceV[3]); dir_b1_c1.setLen(c1_len);                
+    let dir_b1_c1 = Vec3d.Sub(faceV[2], faceV[3]); dir_b1_c1.setLen(c1_len);
     faceV2[2] = Vec3d.Sub(faceV[2], dir_b1_c1);
     faceV2[3] = new Vec3d(faceV[2]);
 
@@ -1019,7 +1019,7 @@ function buildModel_Cylindrical_Flap() {
     for(let i = 0; i < N; i++) {
       let angle = 2 * Math.PI / N * i;
       let fv = new Array(4);
- 
+
       for(let k = 0; k < 4; k++) {
         fv[k] = new Vec3d();
         // 回転させる
@@ -1051,7 +1051,7 @@ function buildModel_Cylindrical_Flap() {
     for(let i = 0; i < N; i++) {
       let angle = 2 * Math.PI / N * i;
       let fv2 = new Array(4);
-        
+
       for(let k = 0; k < 4; k++) {
         fv2[k] = new Vec3d();
         // 回転させる
@@ -1079,12 +1079,12 @@ function buildModel_Cylindrical_Flap() {
       vIndex += 4;
     }
   }
-  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));       
+  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));
 
   geometry.setIndex( indices );
   geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
   geometry.setAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
-  group.add(new THREE.Mesh(geometry, material));    
+  group.add(new THREE.Mesh(geometry, material));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1105,17 +1105,17 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	let v = new Array(nPoints);
 	let lv = new Array(nPoints);
 	cpEdges = [];
-	
+
 	// Half-angle of polygon gore
 	let alpha2 = Math.PI/N;
 	let sinalpha2 = Math.sin(alpha2);
 	let cosalpha2 = Math.cos(alpha2);
-	
+
 	// Angle of polygon gore
 	let alpha = 2*alpha2;
 	let sinalpha = Math.sin(alpha);
 	let cosalpha = Math.cos(alpha);
-	
+
 	// Find minimum and maximum x values of rotated curve
 	let rmin = pLine[0].x;
 	let rmax = rmin;
@@ -1129,26 +1129,26 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	let rc = Math.max(Math.abs(rmin), Math.abs(rmax));
 	let ro = rc/Math.sqrt(1 - holePercent*holePercent);
 	let ri = holePercent*ro;
-	
+
 	let singamma = ri/ro;
 	let cosgamma = rc/ro;
 	let sinbeta = sinalpha2*cosgamma + cosalpha2*singamma
 	let cosbeta = cosalpha2*cosgamma - sinalpha2*singamma;
-	
+
 	let a = 2*ro*sinalpha2;
 	let w = a*(1 + flapMargin);
 	let b = (w - a)/2;
 	let glue = bDrawGlueArea? 0.2*w : 0;
-	
+
 	let rixsinbeta = ri*sinbeta;
 	let rixcosbeta = ri*cosbeta;
 	for (let i = 0; i < nPoints; i++) {
 		xh[i] = cosbeta*pLine[i].x - rixsinbeta;
 		yh[i] = -sinbeta*pLine[i].x - rixcosbeta;
 		zh[i] = pLine[i].y;
-		v[i] = yh[i]; 
+		v[i] = yh[i];
 	}
-			
+
 	// Calculate crease line coordinates
 	u[0] = 0;
 	for (let i = 1; i < nPoints; i++) {
@@ -1156,7 +1156,7 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 		let dz = zh[i] - zh[i-1];
 		u[i] = u[i-1] + Math.sqrt(dx*dx + dz*dz);
 	}
-	
+
 	// Calculate flap line coordinates
 	let B = new Vec2d(-ro*cosalpha2, -ro*sinalpha2);
 	let E = new Vec2d(ro*cosbeta*cosgamma - rixsinbeta, -ro*sinbeta*cosgamma - rixcosbeta);
@@ -1166,7 +1166,7 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	for (let i = 0; i < nPoints; i++) {
 		lv[i] = B.y + m*(xh[i] - B.x) - b;
 	}
-		
+
 	// Assemble crease pattern
 	let MVreverse = pLine[0].y < pLine[nPoints-1].y;
 	for (let k = 0; k < N; k++) {
@@ -1181,22 +1181,22 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 			if (bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[i-1], pLine[i]), Vec2d.Sub(pLine[i], pLine[i+1])) < minHideAngle) continue;
 			let bRidge = Vec2d.Cross(Vec2d.Sub(pLine[i-1], pLine[i]), Vec2d.Sub(pLine[i+1], pLine[i])) < 0;
 			if (MVreverse) { bRidge = !bRidge; }
-							
-			let x1 = -v[i] + offset; 
+
+			let x1 = -v[i] + offset;
 			let x2 = -lv[i] + offset;
 			let x0 = x2 - w;
 			let y0 = u[i];
-			
+
 			if(bDrawGlueArea && k == 0) {
 				let x = -lv[i] + (N - 1)*w;
 				cpEdges.push( new CPEdge(new Vec2d(x, y0), new Vec2d(x + glue, y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));
 			}
-							
+
 			cpEdges.push(new CPEdge( new Vec2d(x1, y0), new Vec2d(x2, y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY ));
 			if(pLine[i].x == rc*(1 + flapMargin)) { continue; }
-						 
-			cpEdges.push(new CPEdge( new Vec2d(x0, y0), new Vec2d(x1, y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN)); 
-		}		
+
+			cpEdges.push(new CPEdge( new Vec2d(x0, y0), new Vec2d(x1, y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));
+		}
 	}
 
 	// Draw left border
@@ -1210,7 +1210,7 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 			cpEdges.push(new CPEdge(new Vec2d(-lv[i] + (N-1)*w + glue, u[i]), new Vec2d(-lv[i+1] + (N-1)*w + glue, u[i+1]), EDGE_TYPE_BORDER));
 		}
 	}
-	
+
 	// Draw top and bottom borders
 	cpEdges.push(new CPEdge(new Vec2d(-lv[0] - w, u[0]), new Vec2d(-lv[0] + (N-1)*w + glue, u[0]), EDGE_TYPE_BORDER));
 	cpEdges.push(new CPEdge(new Vec2d(-lv[nPoints-1] - w, u[nPoints-1]), new Vec2d(-lv[nPoints-1] + (N-1)*w + glue, u[nPoints-1]), EDGE_TYPE_BORDER));
@@ -1230,7 +1230,7 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	let points_for_bottom_rim = [];
 	let horizontal_edge_points_c = new Array(N);
 	let horizontal_edge_points_f = new Array(N);
-	
+
 	let minY = pLine[0].y;
 	let maxY = pLine[0].y;
 	for (let i = 1; i < nPoints; i++) {
@@ -1257,16 +1257,16 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 			let pointf = new Vec3d(xt, yt, pLine[i].y - centerY);
 			pointf.scale(modelScale);
 			let vectorf = new THREE.Vector3(-pointf.x, -pointf.z, pointf.y)
-			points_for_flapedge.push(vectorf);	
+			points_for_flapedge.push(vectorf);
 			vertices3.push(new Vec3d(pointf.x, pointf.y, pointf.z));
-			
+
 			// Crease line
 			xt = xh[i]*cosphi + yh[i]*sinphi;
 			yt = -xh[i]*sinphi + yh[i]*cosphi;
 			let pointc = new Vec3d(xt, yt, pLine[i].y - centerY);
 			pointc.scale(modelScale);
 			let vectorc = new THREE.Vector3(-pointc.x, -pointc.z, pointc.y);
-			points_for_creaseline.push(vectorc);	
+			points_for_creaseline.push(vectorc);
 			vertices3.push(new Vec3d(pointc.x, pointc.y, pointc.z));
 
 			// Horizontal edges
@@ -1281,15 +1281,15 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 		group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints( points_for_flapedge ), FlapEdgeMaterial));
 
 		// Top rim
-		//points_for_top_rim.push(points_for_creaseline[0]);	
+		//points_for_top_rim.push(points_for_creaseline[0]);
 		points_for_top_rim.push(points_for_flapedge[0]);
-		points_for_top_rim.push(points_for_creaseline[0]);	
+		points_for_top_rim.push(points_for_creaseline[0]);
 
 
 		// Bottom rim
-		//points_for_bottom_rim.push(points_for_creaseline[nPoints-1]);	
-		points_for_bottom_rim.push(points_for_flapedge[nPoints-1]);	
-		points_for_bottom_rim.push(points_for_creaseline[nPoints-1]);	
+		//points_for_bottom_rim.push(points_for_creaseline[nPoints-1]);
+		points_for_bottom_rim.push(points_for_flapedge[nPoints-1]);
+		points_for_bottom_rim.push(points_for_creaseline[nPoints-1]);
 
 	}
 
@@ -1306,7 +1306,7 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 		}
 		group.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(edgepoints), LineMat));
 	}
-	
+
 	// Draw mesh faces
 	for (let k = 0; k < N; k++) {
 		for (let i = 0; i < nPoints-1; i++) {
@@ -1324,9 +1324,9 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 				-vertices3[i2].x, -vertices3[i2].z, vertices3[i2].y,
 				-vertices3[i3].x, -vertices3[i3].z, vertices3[i3].y
 			);
-			
+
 			// Faces between current flap edge and adjacent crease line
-			let adjacent; 
+			let adjacent;
 			if (k == N-1) {
 				// Wrap around to beginning at end of loop
 				adjacent = vIndex - 2*(N-1)*nPoints;
@@ -1351,7 +1351,7 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 
   geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
 	geometry.computeVertexNormals();
-  group.add(new THREE.Mesh(geometry, material));     
+  group.add(new THREE.Mesh(geometry, material));
 }
 
 
@@ -1371,7 +1371,7 @@ function buildModel_Cylindrical_Prism() {
   let maxY = pLine[0].y;
   let centerY = minY;
 
-  // 水平な折り線の位置計算  
+  // 水平な折り線の位置計算
   for( let i = 1; i < pLine.length; i++ ) {
     let x = pLine[i].x;
     maxX = Math.max(maxX, Math.abs(x));
@@ -1390,7 +1390,7 @@ function buildModel_Cylindrical_Prism() {
   let height = h[pLine.length - 1];
   let unitWidth = 2 * maxX * Math.sin(Math.PI / N);
 
-        
+
   // 上下のカットライン
   let x = bDrawGlueArea ? - unitWidth * 0.2 : 0;
   cpEdges.push(new CPEdge(new Vec2d(x, 0), new Vec2d(unitWidth * N, 0), EDGE_TYPE_BORDER));
@@ -1416,23 +1416,23 @@ function buildModel_Cylindrical_Prism() {
       let lx1 = unitWidth * i + (maxX - v1.x)* Math.sin(Math.PI / N);
       let y0 = h[j];//v0.y;
       let y1 = h[j+1];//v1.y;
-      cpEdges.push( new CPEdge (new Vec2d(lx0, y0), new Vec2d(lx1, y1), EDGE_TYPE_VALLEY));           
+      cpEdges.push( new CPEdge (new Vec2d(lx0, y0), new Vec2d(lx1, y1), EDGE_TYPE_VALLEY));
 
       let rx0 = unitWidth * (i + 1) - (maxX - v0.x)* Math.sin(Math.PI / N);
       let rx1 = unitWidth * (i + 1) - (maxX - v1.x)* Math.sin(Math.PI / N);
-      cpEdges.push( new CPEdge(new Vec2d(rx0, y0), new Vec2d(rx1, y1), EDGE_TYPE_VALLEY));                         
-              
+      cpEdges.push( new CPEdge(new Vec2d(rx0, y0), new Vec2d(rx1, y1), EDGE_TYPE_VALLEY));
+
       let BD0 = (maxX - v0.x)* Math.sin(Math.PI / N);
       let BC0 = BD0 / (1 + Math.cos(Math.PI / N));
       let BD1 = (maxX - v1.x)* Math.sin(Math.PI / N);
       let BC1 = BD1 / (1 + Math.cos(Math.PI / N));
-              
+
       let rrx0 = rx0 + BC0;
       let rrx1 = rx1 + BC1;
       let llx0 = lx0 - BC0;
       let llx1 = lx1 - BC1;
-      cpEdges.push( new CPEdge(new Vec2d(rrx0, y0), new Vec2d(rrx1, y1), EDGE_TYPE_MOUNTAIN));                         
-      cpEdges.push( new CPEdge(new Vec2d(llx0, y0), new Vec2d(llx1, y1), EDGE_TYPE_MOUNTAIN));                         
+      cpEdges.push( new CPEdge(new Vec2d(rrx0, y0), new Vec2d(rrx1, y1), EDGE_TYPE_MOUNTAIN));
+      cpEdges.push( new CPEdge(new Vec2d(llx0, y0), new Vec2d(llx1, y1), EDGE_TYPE_MOUNTAIN));
 
       if(j == 0 || !bHideHline) { continue; }
 
@@ -1443,23 +1443,23 @@ function buildModel_Cylindrical_Prism() {
       let bRidge = Vec2d.Cross(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j+1], pLine[j])) > 0;
       let left_x = unitWidth * i;
       let right_x = unitWidth * (i+1);
-              
+
       if(v0.x == maxX) { // 1本だけのケース
-        cpEdges.push( new CPEdge(new Vec2d(left_x, y0), new Vec2d(right_x, y0), !bRidge ? EDGE_TYPE_MOUNTAIN  : OriLine.EDGE_TYPE_VALLEY));                         
-        continue;                    
+        cpEdges.push( new CPEdge(new Vec2d(left_x, y0), new Vec2d(right_x, y0), !bRidge ? EDGE_TYPE_MOUNTAIN  : OriLine.EDGE_TYPE_VALLEY));
+        continue;
       }
-              
-      cpEdges.push( new CPEdge(new Vec2d(left_x, y0), new Vec2d(llx0,      y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY ));                   
-      cpEdges.push( new CPEdge(new Vec2d(llx0,   y0), new Vec2d( lx0,      y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));                   
-      cpEdges.push( new CPEdge(new Vec2d(lx0,    y0), new Vec2d( rx0,      y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY));                   
-      cpEdges.push( new CPEdge(new Vec2d(rx0,    y0), new Vec2d( rrx0,     y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));                   
-      cpEdges.push( new CPEdge(new Vec2d(rrx0,   y0), new Vec2d( right_x,  y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY));    
-      
+
+      cpEdges.push( new CPEdge(new Vec2d(left_x, y0), new Vec2d(llx0,      y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY ));
+      cpEdges.push( new CPEdge(new Vec2d(llx0,   y0), new Vec2d( lx0,      y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));
+      cpEdges.push( new CPEdge(new Vec2d(lx0,    y0), new Vec2d( rx0,      y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY));
+      cpEdges.push( new CPEdge(new Vec2d(rx0,    y0), new Vec2d( rrx0,     y0), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));
+      cpEdges.push( new CPEdge(new Vec2d(rrx0,   y0), new Vec2d( right_x,  y0), bRidge ? EDGE_TYPE_MOUNTAIN  : EDGE_TYPE_VALLEY));
+
       if(bDrawGlueArea && i == 0) {
         let x = - unitWidth * 0.2;
         cpEdges.push( new CPEdge(new Vec2d(x, y0), new Vec2d(0, y0), bRidge ? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_VALLEY));
       }
-      
+
     }
   }
 
@@ -1496,30 +1496,30 @@ function buildModel_Cylindrical_Prism() {
   let l = new Array(vNum-1);
   for(let i = 0; i < vNum-1; i++) {
     l[i] = getDistance(pLine[i], pLine[i+1]);
-  }  
+  }
 
   let vVec = [];
 
   for(let j = 0; j < vNum; j++) {
-        
+
     let z = pLine[j].y;
     let d = pLine[j].x;
 
     let lenAB = d * Math.sin(Math.PI/N);
     let lenBCD = (maxX - d)* Math.sin(Math.PI / N);
-    let lenBC = lenBCD / (1 + Math.cos(Math.PI / N));         
+    let lenBC = lenBCD / (1 + Math.cos(Math.PI / N));
     let lenBD = lenBC * Math.sin(Math.PI/N);
     let lenCD = lenBC * Math.cos(Math.PI/N);
     let pA = new Vec3d( lenAB, -d * Math.cos(Math.PI/N), z);
     let pB = new Vec3d(-lenAB, -d * Math.cos(Math.PI/N), z);
-          
+
     let vecOB = new Vec2d(-Math.sin(Math.PI/N), -Math.cos(Math.PI/N));
     let pD = new Vec3d(pB.x + vecOB.x * lenBD, pB.y + vecOB.y * lenBD, z);
     let vecDC = new Vec2d(-vecOB.y, vecOB.x);
     let pC = new Vec3d(pD.x + vecDC.x * lenCD, pD.y + vecDC.y * lenCD, z);
-     
+
     pD.set(pB.x - lenBC, -d * Math.cos(Math.PI/N), z);
-          
+
     vVec.push(pA);
     vVec.push(pB);
     vVec.push(pC);
@@ -1531,7 +1531,7 @@ function buildModel_Cylindrical_Prism() {
   for(let j = 0; j < vNum-1; j++) {
     let tmpFace = [];
     for(let i = 0; i < vNumPerLayer-1; i++) {
-       	  
+
   	  // 四角形のための頂点を準備
       let v = new Array(4);
       v[0] = new Vec3d(vVec[j*vNumPerLayer+i]);
@@ -1561,7 +1561,7 @@ function buildModel_Cylindrical_Prism() {
       for(let i = 0; i < N; i++) {
         let angle = 2 * Math.PI / N * i;
         let fv = new Array(4);
-      
+
         for(let k = 0; k < 4; k++) {
           fv[k] = new Vec3d();
           // 回転させる
@@ -1571,7 +1571,7 @@ function buildModel_Cylindrical_Prism() {
 
           fv[k].scale(modelScale);
           vertices.push(fv[k].x,  -fv[k].z, fv[k].y );
-        }                    
+        }
         let nomalVec = Vec3d.Cross(Vec3d.Sub(fv[1], fv[0]), Vec3d.Sub(fv[2], fv[0]));
         for(let k = 0; k < 4; k++)
           normals.push(nomalVec.x,  -nomalVec.z, nomalVec.y );
@@ -1590,12 +1590,12 @@ function buildModel_Cylindrical_Prism() {
     }
   }
 
-  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));       
+  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));
 
   geometry.setIndex( indices );
   geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
   geometry.setAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
-  group.add(new THREE.Mesh(geometry, material));    
+  group.add(new THREE.Mesh(geometry, material));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1629,13 +1629,13 @@ function buildModel_Disk_Flap() {
   // generate CP
   // 放射状の線の長さの算出
   let len = 0;
-        
+
   // 水平方向の長さ（x軸方向の長さ）
   let firstElementLen = 0;
   for(let i = 1; i < vNum; i++) {
     let v0 = pLine[i-1];
     let v1 = pLine[i];
-    
+
     len += Math.sqrt(l[i-1]*l[i-1]-(v1.x-v0.x)*(v1.x-v0.x)*Math.sin(Math.PI/N)*Math.sin(Math.PI/N));
     if(i == 1) {  firstElementLen = len; }
 
@@ -1647,31 +1647,31 @@ function buildModel_Disk_Flap() {
   centerY = (minY + maxY) /2;
   // 放射線状の長さにする
   len = len / Math.cos(Math.PI/N);
-       
+
   // 最初の線が水平かどうか（平らな底面では折り線が不要なため）
   let bFirstLineHolizontal = Math.abs(pLine[0].y - pLine[1].y) < 1;
 
   // 最初の線が水平だったら表示しない工夫
   let centerOffset = 0;//15; // いずれにしても中心は表示しないなら値を指定する
-  if(bFirstLineHolizontal) { 
-    centerOffset = firstElementLen / Math.cos(Math.PI/N); 
+  if(bFirstLineHolizontal) {
+    centerOffset = firstElementLen / Math.cos(Math.PI/N);
   }
 
   // 放射状の線を描画
   for(let i = 0; i < N; i++) {
-    cpEdges.push(new CPEdge( new Vec2d(centerOffset* Math.cos(Math.PI/N + 2*i*Math.PI/N), 
-                            centerOffset * Math.sin(Math.PI/N + 2*i*Math.PI/N)), 
-                            new Vec2d(len * Math.cos(Math.PI/N + 2*i*Math.PI/N), 
-                            len * Math.sin(Math.PI/N + 2*i*Math.PI/N)), EDGE_TYPE_MOUNTAIN));             
+    cpEdges.push(new CPEdge( new Vec2d(centerOffset* Math.cos(Math.PI/N + 2*i*Math.PI/N),
+                            centerOffset * Math.sin(Math.PI/N + 2*i*Math.PI/N)),
+                            new Vec2d(len * Math.cos(Math.PI/N + 2*i*Math.PI/N),
+                            len * Math.sin(Math.PI/N + 2*i*Math.PI/N)), EDGE_TYPE_MOUNTAIN));
     // 外周のカット線
     cpEdges.push(new CPEdge( new Vec2d(
-                    len * Math.cos(Math.PI/N + 2*(i+1)*Math.PI/N), 
-                    len * Math.sin(Math.PI/N + 2*(i+1)*Math.PI/N)), 
-                    new Vec2d(len * Math.cos(Math.PI/N + 2*i*Math.PI/N), 
-                    len * Math.sin(Math.PI/N + 2*i*Math.PI/N)), 
-                    EDGE_TYPE_BORDER));             
+                    len * Math.cos(Math.PI/N + 2*(i+1)*Math.PI/N),
+                    len * Math.sin(Math.PI/N + 2*(i+1)*Math.PI/N)),
+                    new Vec2d(len * Math.cos(Math.PI/N + 2*i*Math.PI/N),
+                    len * Math.sin(Math.PI/N + 2*i*Math.PI/N)),
+                    EDGE_TYPE_BORDER));
   }
-      
+
   // 放射状の谷折り線
   for(let i = 0; i < N; i++) {
     let rotAngle = i * Math.PI * 2 / N;
@@ -1686,43 +1686,43 @@ function buildModel_Disk_Flap() {
       let p1 = new Vec2d(p);
       p0.rotate(rotAngle);
       p1.rotate(rotAngle);
-      
+
       if(bFirstLineHolizontal && j== 1) { /* 最初の線が水平だったら必要ないのでスキップ*/ } else {
-        cpEdges.push(new CPEdge(new Vec2d(p0), new Vec2d(p1), EDGE_TYPE_VALLEY));             
+        cpEdges.push(new CPEdge(new Vec2d(p0), new Vec2d(p1), EDGE_TYPE_VALLEY));
       }
       preP.set(p);
     }
-             
+
       preP.set(0,0);
-      for(let j = 1; j < vNum-1; j++) {                
+      for(let j = 1; j < vNum-1; j++) {
         // 円周方向の折り線の向きの判別
         let bRidge = Vec2d.Cross(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j+1], pLine[j])) > 0;
-          
+
         // 上から下に向かうか、下から上に向かうかで逆転する
         if(pLine[0].y < pLine[vNum-1].y) {
          	bRidge = !bRidge;
         }
-                
+
         let pre_x = pLine[j-1].x;
         let x = pLine[j].x;
         let px = preP.x + Math.sqrt(l[j-1]*l[j-1]-(x-pre_x)*(x-pre_x)*Math.sin(Math.PI/N)*Math.sin(Math.PI/N));
         let py = x * Math.sin(Math.PI/N);
-        let py_up = px*Math.tan(Math.PI/N);                
+        let py_up = px*Math.tan(Math.PI/N);
         let p = new Vec2d(px, py);
         preP.set(p);
-                
+
        if(bHideHline && Vec2d.Angle(Vec2d.Sub(pLine[j-1], pLine[j]), Vec2d.Sub(pLine[j], pLine[j+1])) < Math.PI /180.0 * hideAngleDeg) continue;
-        
+
         let p0 = new Vec2d(p.x, p.y);
         let p1 = new Vec2d(p.x, py_up);
         let p2 = new Vec2d(p.x, -py_up);
-        
+
         p0.rotate(rotAngle);
         p1.rotate(rotAngle);
         p2.rotate(rotAngle);
 
-        cpEdges.push(new CPEdge(new Vec2d(p0), new Vec2d(p1), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));             
-        cpEdges.push(new CPEdge(new Vec2d(p0), new Vec2d(p2), bRidge ? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_VALLEY));            
+        cpEdges.push(new CPEdge(new Vec2d(p0), new Vec2d(p1), bRidge ? EDGE_TYPE_VALLEY : EDGE_TYPE_MOUNTAIN));
+        cpEdges.push(new CPEdge(new Vec2d(p0), new Vec2d(p2), bRidge ? EDGE_TYPE_MOUNTAIN : EDGE_TYPE_VALLEY));
       }
   }
 
@@ -1750,35 +1750,35 @@ function buildModel_Disk_Flap() {
 
     let faceV = new Array(4);
     let faceV2 = new Array(4); // flapの裏側部分（入力線が軸を横切るケースで必要になる）
-            
+
     let pre_x = pLine[j-1].x;
     let x = pLine[j].x;
     let px = preP.x + Math.sqrt(l[j-1]*l[j-1]-(x-pre_x)*(x-pre_x)*Math.sin(Math.PI/N)*Math.sin(Math.PI/N));
-            
+
     let p0_x = preP.x;
-    let p0_y = pre_x * Math.sin(Math.PI/N);                            
+    let p0_y = pre_x * Math.sin(Math.PI/N);
     let p1_x = preP.x;
     let p1_y = -preP.x*Math.tan(Math.PI/N);
-          
+
     let p2_x = px;
-    let p2_y = -px*Math.tan(Math.PI/N);                            
+    let p2_y = -px*Math.tan(Math.PI/N);
     let p3_x = px;
     let p3_y = x * Math.sin(Math.PI/N);
     preP.x = px;
-            
+
     // z軸方向=入力時のy軸方向
     // y軸方向=回転軸からの距離
     // x軸方向=水平方向の移動分。展開図でのy座標。
-    
+
     faceV[0] = new Vec3d(p0_y, pre_x * Math.cos(Math.PI/N), pLine[j-1].y);
     faceV[1] = new Vec3d(p1_y, pre_x * Math.cos(Math.PI/N), pLine[j-1].y);
     faceV[2] = new Vec3d(p2_y, x * Math.cos(Math.PI/N), pLine[j].y);
     faceV[3] = new Vec3d(p3_y, x * Math.cos(Math.PI/N), pLine[j].y);
-                        
+
     for(let i = 0; i < 4; i++) { faceV2[i] = new Vec3d(); }
     faceV2[0].set(faceV[2]);
     faceV2[1].set(faceV[1]);
-    
+
     // 回転させる
     let ang = 2 * Math.PI / N;
     faceV2[2].z = faceV[0].z;
@@ -1815,7 +1815,7 @@ function buildModel_Disk_Flap() {
         fv[k].scale(modelScale);
 
         vertices.push(fv[k].x,  -fv[k].z, fv[k].y );
-      }                    
+      }
       let nomalVec = Vec3d.Cross(Vec3d.Sub(fv[2], fv[0]), Vec3d.Sub(fv[3], fv[0]));
         for(let k = 0; k < 4; k++)
           normals.push(nomalVec.x,  -nomalVec.z, nomalVec.y );
@@ -1855,7 +1855,7 @@ function buildModel_Disk_Flap() {
         let si = (6 - e[0]) % 4;
         let ei = (6 - e[1]) % 4;
         points_for_line.push( new THREE.Vector3(fv2[si].x,  -fv2[si].z, fv2[si].y));
-        points_for_line.push( new THREE.Vector3(fv2[ei].x,  -fv2[ei].z, fv2[ei].y));       
+        points_for_line.push( new THREE.Vector3(fv2[ei].x,  -fv2[ei].z, fv2[ei].y));
       }
 
       indices.push( vIndex, vIndex + 1, vIndex + 2 );
@@ -1865,12 +1865,12 @@ function buildModel_Disk_Flap() {
     }
   }
 
-  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));       
+  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));
 
   geometry.setIndex( indices );
   geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
   geometry.setAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
-  group.add(new THREE.Mesh(geometry, material));    
+  group.add(new THREE.Mesh(geometry, material));
  }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1922,13 +1922,13 @@ function buildModel_Disk_Prism() {
     let pB = new Vec2d();
     let pC = new Vec2d();
     let pD = new Vec2d();
-            
+
     let preX = pLine[j-1].x * Math.sin(alpha);
     let x = pLine[j].x * Math.sin(alpha);
     let diffX = x - preX;
-    let lenAB = x;            
+    let lenAB = x;
     h += Math.sqrt(l[j-1]*l[j-1] - diffX * diffX);
-            
+
     let lenBC = 0.5*(h*Math.tan(Math.PI/N) - lenAB);
     let lenBD = lenBC * Math.sin(Math.PI/N);
     let lenCD = lenBC * Math.cos(Math.PI/N);
@@ -1940,11 +1940,11 @@ function buildModel_Disk_Prism() {
     vVec2d.push(pB);
     vVec2d.push(pC);
     vVec2d.push(pD);
-  }      
+  }
 
   // 最初の線が水平かどうか（平らな底面では折り線が不要なため）
   let bFirstLineHolizontal = Math.abs(pLine[0].y - pLine[1].y) < 1;
-  
+
   let tmpLines = [];
   for(let j = 0; j < vNum-1; j++) {
     let preA = vVec2d[j*4];
@@ -1955,15 +1955,15 @@ function buildModel_Disk_Prism() {
     let pB = vVec2d[j*4+1+4];
     let pC = vVec2d[j*4+2+4];
     let pD = vVec2d[j*4+3+4];
-            
+
     if ( !(j == 0 && bFirstLineHolizontal)) {
     // 放射線状の2つの線
-    tmpLines.push(new CPEdge(new Vec2d(preB), new Vec2d(pB), EDGE_TYPE_VALLEY));            
-    tmpLines.push(new CPEdge(new Vec2d(preC), new Vec2d(pC), EDGE_TYPE_MOUNTAIN));            
+    tmpLines.push(new CPEdge(new Vec2d(preB), new Vec2d(pB), EDGE_TYPE_VALLEY));
+    tmpLines.push(new CPEdge(new Vec2d(preC), new Vec2d(pC), EDGE_TYPE_MOUNTAIN));
 
     // y軸に対して対称
-    tmpLines.push(new CPEdge(new Vec2d(-preB.x, preB.y), new Vec2d(-pB.x, pB.y), EDGE_TYPE_VALLEY));            
-    tmpLines.push(new CPEdge(new Vec2d(-preC.x, preC.y), new Vec2d(-pC.x, pC.y), EDGE_TYPE_MOUNTAIN));            
+    tmpLines.push(new CPEdge(new Vec2d(-preB.x, preB.y), new Vec2d(-pB.x, pB.y), EDGE_TYPE_VALLEY));
+    tmpLines.push(new CPEdge(new Vec2d(-preC.x, preC.y), new Vec2d(-pC.x, pC.y), EDGE_TYPE_MOUNTAIN));
     }
 
     // 水平線
@@ -1971,27 +1971,27 @@ function buildModel_Disk_Prism() {
 
     	let type;
       let rType;
-      if( j == vNum-2) { 
+      if( j == vNum-2) {
         type = EDGE_TYPE_BORDER;
-        rType = EDGE_TYPE_BORDER; 
+        rType = EDGE_TYPE_BORDER;
       } else {
      		type = bRidgeArray[j] ?  EDGE_TYPE_MOUNTAIN: EDGE_TYPE_VALLEY;
      		rType = !bRidgeArray[j] ?  EDGE_TYPE_MOUNTAIN: EDGE_TYPE_VALLEY;
      	}
 
-      tmpLines.push(new CPEdge(new Vec2d(pB.x, pA.y), new Vec2d(-pB.x, pA.y), type));  // 中央を横切る水平線。中央で分断されないように連結          
-     	tmpLines.push(new CPEdge(new Vec2d(pB), new Vec2d(pC), rType));  
-     	tmpLines.push(new CPEdge(new Vec2d(pC), new Vec2d(pD), type));      
-            	
+      tmpLines.push(new CPEdge(new Vec2d(pB.x, pA.y), new Vec2d(-pB.x, pA.y), type));  // 中央を横切る水平線。中央で分断されないように連結
+     	tmpLines.push(new CPEdge(new Vec2d(pB), new Vec2d(pC), rType));
+     	tmpLines.push(new CPEdge(new Vec2d(pC), new Vec2d(pD), type));
+
     	// y軸に対して対称
-     	tmpLines.push(new CPEdge(new Vec2d(-pB.x, pB.y), new Vec2d(-pC.x, pC.y), rType));         
-     	tmpLines.push(new CPEdge(new Vec2d(-pC.x, pC.y), new Vec2d(-pD.x, pD.y), type));     
+     	tmpLines.push(new CPEdge(new Vec2d(-pB.x, pB.y), new Vec2d(-pC.x, pC.y), rType));
+     	tmpLines.push(new CPEdge(new Vec2d(-pC.x, pC.y), new Vec2d(-pD.x, pD.y), type));
   }
-        
+
   // 円周方向のコピー
   for(let i = 0; i < N; i++) {
     let rotAngle = i * Math.PI * 2 / N;
-            
+
     for(let line of tmpLines) {
       let sp = new Vec2d();
       let ep = new Vec2d();
@@ -2001,10 +2001,10 @@ function buildModel_Disk_Prism() {
       sp.rotate(rotAngle);
       ep.rotate(rotAngle);
 
-      cpEdges.push(new CPEdge(sp, ep, line.type)); 
+      cpEdges.push(new CPEdge(sp, ep, line.type));
     }
   }
-       
+
   // 3Dモデルと整合を取るために折り線のx座標を反転する
   for( let i = 0; i < cpEdges.length; i++) {
   	cpEdges[i].sp.x *= -1;
@@ -2026,15 +2026,15 @@ function buildModel_Disk_Prism() {
   // 立体形状構築
   let vVec = [];
   let vNumPerLayer = 5;
-        
+
   for(let i = 0; i < vNumPerLayer; i++) {
     vVec.push(new Vec3d(0, 0, pLine[0].y));
   }
-        
+
   for(let i = 0; i < vNum-1; i++) {
     l[i] = getDistance(pLine[i], pLine[i+1]);
   }
-        
+
   sumLen = 0;
 
   for(let j = 1; j < vNum; j++) {
@@ -2042,7 +2042,7 @@ function buildModel_Disk_Prism() {
     let pB = new Vec3d();
     let pC = new Vec3d();
     let pD = new Vec3d();
-            
+
     let z = pLine[j].y;
     let d = pLine[j].x;
     sumLen += l[j-1];
@@ -2054,30 +2054,30 @@ function buildModel_Disk_Prism() {
     let lenCD = lenBC * Math.cos(Math.PI/N);
     pA.set(lenAB,  -d* Math.cos(Math.PI/N), z);
     pB.set(-lenAB, -d* Math.cos(Math.PI/N), z);
-            
+
     let vecOB = new Vec2d(-Math.sin(Math.PI/N), -Math.cos(Math.PI/N));
     pD.set(pB.x + vecOB.x * lenBD, pB.y + vecOB.y * lenBD, z);
     let vecDC = new Vec2d(-vecOB.y, vecOB.x);
     pC.set(pD.x + vecDC.x * lenCD, pD.y + vecDC.y * lenCD, z);
     pD.set(pB.x - lenBC, -d* Math.cos(Math.PI/N), z);
-            
+
     vVec.push(pA);
     vVec.push(pB);
     vVec.push(pC);
     vVec.push(pD);
     vVec.push(pB);
   }
-  
+
   for(let j = 0; j < vNum-1; j++) {
     let tmpFace = [];
     for(let i = 0; i < vNumPerLayer - 1; i++) {
       let v = new Array(4);
-                
+
       v[0] = new Vec3d(vVec[j*vNumPerLayer+i]);
       v[1] = new Vec3d(vVec[j*vNumPerLayer+i+vNumPerLayer]);
       v[2] = new Vec3d(vVec[j*vNumPerLayer+i+1+vNumPerLayer]);
       v[3] = new Vec3d(vVec[j*vNumPerLayer+i+1]);
-                
+
       tmpFace.push(v);
     }
 
@@ -2093,8 +2093,8 @@ function buildModel_Disk_Prism() {
 
     if(j == pLine.length -2) {
       edges.push([1,2]); // 下端
-    }  
-        
+    }
+
     for(let vs of tmpFace) {
       for(let i = 0; i < N; i++) {
         let angle = 2 * Math.PI / N * i;
@@ -2108,7 +2108,7 @@ function buildModel_Disk_Prism() {
           fv[k].y = vs[k].x * Math.sin(angle) + vs[k].y * Math.cos(angle);
           fv[k].scale(modelScale);
           vertices.push(fv[k].x,  -fv[k].z, fv[k].y );
-        }                    
+        }
         let nomalVec = Vec3d.Cross(Vec3d.Sub(fv[2], fv[1]), Vec3d.Sub(fv[3], fv[1]));
         for(let k = 0; k < 4; k++)
           normals.push(nomalVec.x,  -nomalVec.z, nomalVec.y );
@@ -2118,21 +2118,21 @@ function buildModel_Disk_Prism() {
             let ei = e[1];
             points_for_line.push( new THREE.Vector3(fv[si].x,  -fv[si].z, fv[si].y));
             points_for_line.push( new THREE.Vector3(fv[ei].x,  -fv[ei].z, fv[ei].y));
-        }      
+        }
 
         indices.push( vIndex, vIndex + 1, vIndex + 2 );
         indices.push( vIndex, vIndex + 2, vIndex + 3 );
         vIndex += 4;
       }
-    }    
+    }
   }
 
-  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));       
+  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints( points_for_line ), LineMat));
 
   geometry.setIndex( indices );
   geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
   geometry.setAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
-  group.add(new THREE.Mesh(geometry, material));    
+  group.add(new THREE.Mesh(geometry, material));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2147,16 +2147,16 @@ function buildModel() {
   if (pLine.length < 2) return;
 
   switch(modelType) {
-    case MODEL_TYPE_FLAP_CYLINDER:  
+    case MODEL_TYPE_FLAP_CYLINDER:
 			if (holeRadius > 0) {
-				buildModel_Cylindrical_Flap_With_Hole(); 
+				buildModel_Cylindrical_Flap_With_Hole();
 			} else {
 				buildModel_Cylindrical_Flap();
 			}
-			break; 
-    case MODEL_TYPE_PRISM_CYLINDER:  buildModel_Cylindrical_Prism(); break; 
-    case MODEL_TYPE_FLAP_DISK:  buildModel_Disk_Flap(); break; 
-    case MODEL_TYPE_PRISM_DISK:  buildModel_Disk_Prism(); break; 
+			break;
+    case MODEL_TYPE_PRISM_CYLINDER:  buildModel_Cylindrical_Prism(); break;
+    case MODEL_TYPE_FLAP_DISK:  buildModel_Disk_Flap(); break;
+    case MODEL_TYPE_PRISM_DISK:  buildModel_Disk_Prism(); break;
   }
 
   group.rotation.y = rotateY;
@@ -2178,7 +2178,7 @@ function onWindowResize3d() {
    render();
 
 //		renderer.setSize(container.getBoundingClientRect().width, container.getBoundingClientRect().height);
-    
+
 }
 
 function onModelViewMouseDown(e) {
@@ -2221,7 +2221,7 @@ function update3DModel() {
 }
 
 function onModelViewMouseWheel(e) {
- 	let delta = e.deltaY ? -(e.deltaY) : e.wheelDelta ? e.wheelDelta : -(e.detail);  
+ 	let delta = e.deltaY ? -(e.deltaY) : e.wheelDelta ? e.wheelDelta : -(e.detail);
   camera.position.z += delta / 10;
   render();
   e.preventDefault();
@@ -2277,16 +2277,16 @@ function cpCanvas_draw() {
   ctx.strokeStyle = COLOR_PLINE;
   ctx.fillStyle = COLOR_POINT;
 
-  let cpCenter_x = (cpMinCoordinate.x + cpMaxCoordinate.x)/2; 
-  let cpCenter_y = (cpMinCoordinate.y + cpMaxCoordinate.y)/2; 
+  let cpCenter_x = (cpMinCoordinate.x + cpMaxCoordinate.x)/2;
+  let cpCenter_y = (cpMinCoordinate.y + cpMaxCoordinate.y)/2;
 	ctx.translate(-cpCenter_x, -cpCenter_y);
-  
+
   if (bDrawGlueArea && ((modelType == MODEL_TYPE_FLAP_CYLINDER && holeRadius == 0) || modelType == MODEL_TYPE_PRISM_CYLINDER)) {
     ctx.fillStyle = COLOR_GLUE_AREA;
 	  ctx.beginPath();
     ctx.rect(GlueArea.x, GlueArea.y, GlueArea.w, GlueArea.h);
     ctx.fill();
-  } 
+  }
 
   for (let i = 0; i < cpEdges.length; i++) {
     switch(cpEdges[i].type) {
@@ -2321,7 +2321,7 @@ function cpCanvas_onMouseMove(e) {
 	if( cpCanvas_pressedMouseButton == 1 || cpCanvas_pressedMouseButton == 3) { // left or right
     cpCanvas_transVec.x += (mouseX - cpCanvas_preMouseX);
     cpCanvas_transVec.y += (mouseY - cpCanvas_preMouseY);
-		
+
 		cpCanvas_preMouseX = mouseX;
 		cpCanvas_preMouseY = mouseY;
     cpCanvas_draw();
@@ -2371,16 +2371,16 @@ function export_data() {
     document.getElementById("export_data_type").value = "-1";
     return;
   }
-  
+
   let ext = document.getElementById("export_data_type").value;
-  
+
   let content = "";
   let filename = "ori-revo." + ext;
   switch(ext) {
-    case 'dxf': 
+    case 'dxf':
       content = exportDXF(cpEdges);
       break;
-    case 'svg': 
+    case 'svg':
       content = exportSVG(cpEdges);
       break;
     case 'obj':
@@ -2395,7 +2395,7 @@ function export_data() {
 
   let blob = new Blob([ content ], { "type" : "text/plain" });
 
-  const url = URL.createObjectURL(blob); 
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   document.body.appendChild(a);
   a.download = filename;
@@ -2421,7 +2421,7 @@ function exportOBJ() {
     output += "f " + vIndex + " " + (vIndex + 1) + " " + (vIndex + 2) + "\n";
     output += "f " + vIndex + " " + (vIndex + 2) + " " + (vIndex + 3) + "\n";
     vIndex += 4;
-  }  
+  }
 
   return output;
 }
@@ -2445,7 +2445,7 @@ ENTITIES
 `;
 
   for (let i = 0; i < edges.length; i++) {
-    txt += 
+    txt +=
 `  0
 LINE
   8
@@ -2473,7 +2473,7 @@ CONTINUOUS
     txt += "  21\n";
     txt += (-edges[i].ep.y * scale) + "\n";
   }
-  txt += 
+  txt +=
 `  0
 ENDSEC
   0
@@ -2487,7 +2487,7 @@ function exportSVG(edges) {
   let w = (cpMaxCoordinate.x - cpMinCoordinate.x) * scale;
   let h = (cpMaxCoordinate.y - cpMinCoordinate.y) * scale;
 
-  let txt = 
+  let txt =
 `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
 xmlns="http://www.w3.org/2000/svg"
@@ -2514,10 +2514,10 @@ id="svg1"
       case EDGE_TYPE_VALLEY: col = "0, 0, 255"; break;
     }
 
-    txt += `<path 
-style="stroke:rgb(${col});stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" 
-fill="none" 
-id="path${i}" 
+    txt += `<path
+style="stroke:rgb(${col});stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+fill="none"
+id="path${i}"
 d="M ${sx} ${sy} L ${ex} ${ey} "/>
 `;
   }
@@ -2533,9 +2533,9 @@ class Rod {
 	angle; // 現在の角度 // 1つまえのロッドとの成す角
 	sp; // 参照
 	ep; // 参照
-	
-	originalPositionSp;	
-	dv; // 最初の点のみに関係する 移動量  
+
+	originalPositionSp;
+	dv; // 最初の点のみに関係する 移動量
 
   constructor() { }
 }
@@ -2543,8 +2543,8 @@ class Rod {
 function morph(ratio) {
   ratio = Math.max(ratio, 0);
   ratio = Math.min(ratio, 1);
-  let bCylindrical = (modelType == MODEL_TYPE_FLAP_CYLINDER || modelType == MODEL_TYPE_PRISM_CYLINDER);    
-      
+  let bCylindrical = (modelType == MODEL_TYPE_FLAP_CYLINDER || modelType == MODEL_TYPE_PRISM_CYLINDER);
+
   let sy = pLine[0].y;
   let ey = pLine[pLine.length - 1].y;
 
@@ -2556,24 +2556,24 @@ function morph(ratio) {
     max_y = Math.max(max_y, v.y);
     min_y = Math.min(min_y, v.y);
   }
-       
+
   let centerY = (min_y + max_y) / 2;
   for (let v of pLine) {
     v.y -= centerY;
   }
-        
+
   if(sy > ey) {
     //並びを反転する
     pLine.reverse();
   }
-       
+
   let rods = [];
   let STEP_NUM = 1;
 
   // rod構築
   let total_rod_length = 0;
   let max_x = 0;
-  
+
   for (let i = 0; i < pLine.length - 1; i++) {
     let rod = new Rod();
     rods.push(rod);
@@ -2583,62 +2583,62 @@ function morph(ratio) {
     rod.ep = p1;
     rod.originalPositionSp = new Vec2d(p0);
     let vec_p0_p1 = new Vec2d(p1.x - p0.x, p1.y - p0.y);
-    
+
     max_x = Math.max(max_x,  Math.abs(p0.x));
     max_x = Math.max(max_x,  Math.abs(p1.x));
- 
+
     let goalAngle;
-    if(i == 0) { 
-      goalAngle = bCylindrical ? Math.PI / 2 : 0; 
-    } else { 
+    if(i == 0) {
+      goalAngle = bCylindrical ? Math.PI / 2 : 0;
+    } else {
       let pre_p = pLine[i-1];
       let vec_pre_p0 = new Vec2d(p0.x - pre_p.x, p0.y - pre_p.y);
       goalAngle = Math.atan2(vec_pre_p0.y, vec_pre_p0.x); // goal angle
     }
- 
+
     rod.length = vec_p0_p1.length();
     total_rod_length += rod.length;
     let thisAngle = Math.atan2(vec_p0_p1.y, vec_p0_p1.x);
-           
+
     // 角度による場合分け
     let diffAngle;
-    if(Math.abs(goalAngle - thisAngle) < Math.PI) { 
-      diffAngle = goalAngle - thisAngle; 
-    } else if(thisAngle - goalAngle > Math.PI) { 
-      diffAngle = goalAngle + 2*Math.PI - thisAngle; 
-    } else { 
-      diffAngle = goalAngle - 2*Math.PI - thisAngle; 
+    if(Math.abs(goalAngle - thisAngle) < Math.PI) {
+      diffAngle = goalAngle - thisAngle;
+    } else if(thisAngle - goalAngle > Math.PI) {
+      diffAngle = goalAngle + 2*Math.PI - thisAngle;
+    } else {
+      diffAngle = goalAngle - 2*Math.PI - thisAngle;
     }
-           
+
     if(i == 0 ){
       rod.angle = Math.atan2(vec_p0_p1.y, vec_p0_p1.x);
       rod.dAngle = diffAngle / STEP_NUM;
     } else {
       rod.angle = diffAngle;
-      rod.dAngle = -diffAngle / STEP_NUM;        	
+      rod.dAngle = -diffAngle / STEP_NUM;
     }
   }
-         
+
   rods[0].dv = bCylindrical ? new Vec2d((max_x - rods[0].sp.x) / STEP_NUM, (-total_rod_length / 2 - rods[0].sp.y) / STEP_NUM): new Vec2d();
-       
+
   let morphMaxX = max_x;
 
 
   // それぞれの長さ、目標角度が定まったので、それに従って、頂点位置を更新する
   max_x = 0;
-  min_y = max_y = rods[0].originalPositionSp.y;  	
+  min_y = max_y = rods[0].originalPositionSp.y;
   for(let i = 0; i < rods.length; i++) {
     let rod = rods[i];
-        	
-    // 角度の更新 
+
+    // 角度の更新
     let angle = rod.angle + ratio * rod.dAngle;
-        	
+
     if(i == 0) {
     	rod.sp.x = rod.originalPositionSp.x + ratio * rod.dv.x;
     	rod.sp.y = rod.originalPositionSp.y + ratio * rod.dv.y;
     	rod.ep.x = rod.sp.x + rod.length * Math.cos(angle);
     	rod.ep.y = rod.sp.y + rod.length * Math.sin(angle);
-        		
+
     	max_x = Math.max(max_x, rod.ep.x);
     	max_y = Math.max(max_y, rod.ep.y);
     	max_y = Math.max(max_y, rod.sp.y);
@@ -2646,13 +2646,13 @@ function morph(ratio) {
     	min_y = Math.min(min_y, rod.sp.y);
     	continue;
     }
-        	
+
     // 先の頂点の位置を、根元の頂点の位置、1つ前のロッドの角度、現在のロッドの長さ、角度で更新
     let preRod = rods[i - 1];
-    
+
     // 1つ前のロッドの絶対角度
     let preRodAngle = Math.atan2(preRod.ep.y - preRod.sp.y, preRod.ep.x - preRod.sp.x);
-    
+
     // 更新後の現在のロッドの絶対角度
     let ang = -angle + preRodAngle;
     rod.ep.x = rod.sp.x + rod.length * Math.cos(ang);
@@ -2660,8 +2660,8 @@ function morph(ratio) {
     max_x = Math.max(max_x, rod.ep.x);
     max_y = Math.max(max_y, rod.ep.y);
     min_y = Math.min(min_y, rod.ep.y);
-  }        	
-        
+  }
+
   // もしも max_x がmorphMaxXを超えてしまっていたら、紙が大きくなるということなので、超えないように元に戻す
   if(morphMaxX < max_x && bCylindrical) {
     let diff = max_x - morphMaxX;
@@ -2669,7 +2669,7 @@ function morph(ratio) {
       v.x -= diff;
     }
   }
-        
+
   centerY = (min_y + max_y) / 2;
   for(let v of pLine) {
  		v.y -= centerY;
