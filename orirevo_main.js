@@ -1129,15 +1129,17 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	let rc = Math.max(Math.abs(rmin), Math.abs(rmax));
 	let ro = rc/Math.sqrt(1 - holePercent*holePercent);
 	let ri = holePercent*ro;
+	
+	// Stretch radius of enclosing circle to add flaps.
+	rc *= (1 + flapMargin);
+	ro = Math.sqrt(rc*rc + ri*ri);
 
 	let singamma = ri/ro;
 	let cosgamma = rc/ro;
 	let sinbeta = sinalpha2*cosgamma + cosalpha2*singamma
 	let cosbeta = cosalpha2*cosgamma - sinalpha2*singamma;
 
-	let a = 2*ro*sinalpha2;
-	let w = a*(1 + flapMargin);
-	let b = (w - a)/2;
+	let w = 2*ro*sinalpha2;
 	let glue = bDrawGlueArea? 0.2*w : 0;
 
 	let rixsinbeta = ri*sinbeta;
@@ -1164,7 +1166,7 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 	BE.sub(B);
 	let m = BE.y/BE.x;
 	for (let i = 0; i < nPoints; i++) {
-		lv[i] = B.y + m*(xh[i] - B.x) - b;
+		lv[i] = B.y + m*(xh[i] - B.x);
 	}
 
 	// Assemble crease pattern
