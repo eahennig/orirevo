@@ -4,7 +4,7 @@
 
 import * as THREE from './three/three.module.js';
 
-document.getElementById('last_update').innerHTML = "Last update Dec 29, 2025<br>First release Jun 8, 2022";
+document.getElementById('last_update').innerHTML = "Last update Dec 31, 2025<br>First release Jun 8, 2022";
 
 const COLOR_GRID = 'rgb(200, 200, 200)';
 const COLOR_AXIS = 'rgb(0, 0, 0)';
@@ -1161,10 +1161,10 @@ function buildModel_Cylindrical_Flap_With_Hole() {
 
 	// Calculate flap line coordinates
 	let B = new Vec2d(-ro*cosalpha2, -ro*sinalpha2);
-	let E = new Vec2d(ro*cosbeta*cosgamma - rixsinbeta, -ro*sinbeta*cosgamma - rixcosbeta);
-	let BE = new Vec2d(E);
-	BE.sub(B);
-	let m = BE.y/BE.x;
+	let C = new Vec2d(ro*cosbeta*cosgamma - rixsinbeta, -ro*sinbeta*cosgamma - rixcosbeta);
+	let BC = new Vec2d(C);
+	BC.sub(B);
+	let m = BC.y/BC.x;
 	for (let i = 0; i < nPoints; i++) {
 		lv[i] = B.y + m*(xh[i] - B.x);
 	}
