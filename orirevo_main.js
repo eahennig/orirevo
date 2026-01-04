@@ -4,7 +4,7 @@
 
 import * as THREE from './three/three.module.js';
 
-document.getElementById('last_update').innerHTML = "Last update Dec 31, 2025<br>First release Jun 8, 2022";
+document.getElementById('last_update').innerHTML = "Last update Jan 4, 2026<br>First release Jun 8, 2022";
 
 const COLOR_GRID = 'rgb(200, 200, 200)';
 const COLOR_AXIS = 'rgb(0, 0, 0)';
@@ -611,6 +611,7 @@ function pickPointIndex(px, py) {
   return nearestPointIndex;
 }
 
+// Function copied from orirevo fork at https://github.com/22h225/orirevo
 function mainCanvas_onMouseUp(e) {
   let rect = mainCanvas.getBoundingClientRect();
   let mouseX = e.clientX - rect.left;
@@ -628,6 +629,25 @@ function mainCanvas_onMouseUp(e) {
     let px = (mouseX - mainCanvas.width/2) / mainCanvas_scale  - mainCanvas_transVec.x;
     let py = (mouseY - mainCanvas.height/2) / mainCanvas_scale - mainCanvas_transVec.y;
 
+    // 線分上に点を追加
+    let index;
+    for (let i = 0; i < pLine.length - 1; i++) {
+      let p = pLine[i];
+      let p1 = new Vec2d(px, py);
+      let a = Vec2d.Sub(pLine[i + 1], p);
+      let b = Vec2d.Sub(p1, p);
+      
+      let s = ((a.x * b.x + a.y * b.y) / a.length() ** 2);
+      if (s < 1) {
+        a.scale(s);
+        
+        if (getDistance(p1.x, p1.y, p.x + a.x, p.y + a.y) < 10) {
+          index = i + 1;
+          break;
+        }
+      }
+    }
+
     // snap to grid
     if(bShowGrid) {
       let p2 = getSnappedPoint(px, py);
@@ -644,8 +664,12 @@ function mainCanvas_onMouseUp(e) {
       }
     }
 
-    pLine.push(new Vec2d(px, py));
-    pLineChanged = true;
+    if(index) {
+      pLine.splice(index, 0, new Vec2d(px, py));
+    } else {
+      pLine.push(new Vec2d(px, py));
+      pLineChanged = true;
+    }
     mainCanvas_draw();
 
   // right click : remove a point
